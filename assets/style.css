@@ -1,0 +1,56 @@
+:root {
+  --color-bg: #ffeaff;
+  --color-fg: #4c3299;
+  --color-red: #ef833e;
+  --color-blue: #99d7d7;
+  --color-yellow: #ffe17f;
+}
+
+body {
+    font-family: "Atkinson Hyperlegible", sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+p {
+    line-height: 1.5em;
+}
+
+nav {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.75rem 0;
+    border-bottom: #aaa 1px solid;
+    margin-bottom: 1.5rem;
+}
+
+nav a {
+    text-decoration: none;
+}
+nav a:hover {
+    text-decoration: underline;
+}
+
+
+body>footer {
+    border-top: #aaa 1px solid;
+    font-size: small;
+    text-align: center;
+}
+
+
+/*
+TODO:
+
+body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+}
+a:link {
+    color: var(--color-blue);
+}
+a:visited {
+    color: var(--color-red);
+}
+*/

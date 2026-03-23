@@ -1,0 +1,129 @@
+/* Atkinson Hyperlegible */
+
+@font-face {
+    font-family: "Atkinson Hyperlegible";
+    font-weight: 400;
+    font-style: normal;
+    src: url("fonts/AtkinsonHyperlegible-Regular.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible";
+    font-weight: 400;
+    font-style: italic;
+    src: url("fonts/AtkinsonHyperlegible-Italic.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible";
+    font-weight: 700;
+    font-style: normal;
+    src: url("fonts/AtkinsonHyperlegible-Bold.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible";
+    font-weight: 700;
+    font-style: italic;
+    src: url("fonts/AtkinsonHyperlegible-BoldItalic.ttf") format("truetype");
+}
+
+/* Atkinson Hyperlegible Mono */
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 200;
+    font-style: normal;
+    src: url("fonts/AtkinsonHyperlegibleMono-ExtraLight.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 200;
+    font-style: italic;
+    src: url("fonts/AtkinsonHyperlegibleMono-ExtraLightItalic.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 300;
+    font-style: normal;
+    src: url("fonts/AtkinsonHyperlegibleMono-Light.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 300;
+    font-style: italic;
+    src: url("fonts/AtkinsonHyperlegibleMono-LightItalic.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 400;
+    font-style: normal;
+    src: url("fonts/AtkinsonHyperlegibleMono-Regular.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 400;
+    font-style: italic;
+    src: url("fonts/AtkinsonHyperlegibleMono-Italic.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 500;
+    font-style: normal;
+    src: url("fonts/AtkinsonHyperlegibleMono-Medium.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 500;
+    font-style: italic;
+    src: url("fonts/AtkinsonHyperlegibleMono-MediumItalic.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 600;
+    font-style: normal;
+    src: url("fonts/AtkinsonHyperlegibleMono-SemiBold.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 600;
+    font-style: italic;
+    src: url("fonts/AtkinsonHyperlegibleMono-SemiBoldItalic.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 700;
+    font-style: normal;
+    src: url("fonts/AtkinsonHyperlegibleMono-Bold.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 700;
+    font-style: italic;
+    src: url("fonts/AtkinsonHyperlegibleMono-BoldItalic.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 800;
+    font-style: normal;
+    src: url("fonts/AtkinsonHyperlegibleMono-ExtraBold.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    font-weight: 800;
+    font-style: italic;
+    src: url("fonts/AtkinsonHyperlegibleMono-ExtraBoldItalic.ttf") format("truetype");
+}
