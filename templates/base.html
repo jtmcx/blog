@@ -1,29 +1,26 @@
-{{define "base"}}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>jtm.cx | {{block "title" .}}{{end}}</title>
-  <link rel="stylesheet" href="assets/fonts.css">
-  <link rel="stylesheet" href="assets/style.css">
-{{block "head" .}}{{end}}
+  <title>{{.Config.SiteName}} | {{.Page.Title}}</title>
+  <link rel="stylesheet" href="{{.Page.Rel "/assets/fonts.css"}}">
+  <link rel="stylesheet" href="{{.Page.Rel "/assets/style.css"}}">
+  <link href="{{.Page.Rel .Config.Atom.FeedPath}}" type="application/atom+xml" rel="alternate" title="{{.Config.SiteName}}" />
+{{- block "head" .}}{{- end}}
 </head>
 <body>
 <header>
   <nav>
-    <a href="index.html">Home</a>
-    <a href="posts.html">Posts</a>
+    <a href="{{.Page.Rel "/index.html"}}">Home</a>
+    <a href="{{.Page.Rel .Config.Atom.FeedPath}}">Feed</a>
   </nav>
-{{block "header" .}}{{end}}
 </header>
 <main>
-{{block "main" .}}{{end}}
+{{- block "main" .}}{{- end}}
 </main>
 <footer>
-{{block "footer" .}}{{end}}
-  <p>© 2026 jtm | Content licensed with <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA</a>.</p>
+<p>©{{.Exec.Time.Format "2006"}} {{.Config.DefaultAuthor}} | Content licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA</a>.</p>
 </footer>
 </body>
 </html>
-{{end}}

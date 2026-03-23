@@ -1,7 +1,5 @@
 default:
-	mkdir -p output
-	[ -L output/assets ] || ln -sf ../assets output/assets
-	go run ./cmd/site -o output
+	go run ./tool
 
 tgz:
 	tar czhf output.tgz output
