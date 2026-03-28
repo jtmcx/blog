@@ -6,6 +6,9 @@
   <title>{{.Config.SiteName}} | {{.Page.Title}}</title>
   <link rel="stylesheet" href="{{.Page.Rel "/assets/fonts.css"}}">
   <link rel="stylesheet" href="{{.Page.Rel "/assets/style.css"}}">
+{{- if .Page.HasMath}}
+  <link rel="stylesheet" href="{{.Page.Rel "/assets/katex-0.16.44/katex.min.css"}}">
+{{- end}}
   <link href="{{.Page.Rel .Config.Atom.FeedPath}}" type="application/atom+xml" rel="alternate" title="{{.Config.SiteName}}" />
 {{- block "head" .}}{{- end}}
 </head>
@@ -22,5 +25,13 @@
 <footer>
 <p>©{{.Exec.Time.Format "2006"}} {{.Config.DefaultAuthor}} | Content licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA</a>.</p>
 </footer>
+{{- if .Page.HasMath}}
+<script src="{{.Page.Rel "/assets/katex-0.16.44/katex.min.js"}}"></script>
+<script>
+  document.querySelectorAll('.math').forEach(el => {
+    katex.render(el.textContent, el, {throwOnError: false});
+  });
+</script>
+{{- end}}
 </body>
 </html>

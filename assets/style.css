@@ -30,6 +30,11 @@ p, blockquote {
     line-height: 1.5em;
 }
 
+.katex {
+    /* KaTeX default to 1.2em. This is a little too big. */
+    font-size: 1.1em !important;
+}
+
 a:link { color: var(--color-cyan); }
 a:visited { color: var(--color-pink); }
 
@@ -60,7 +65,6 @@ nav {
     border-bottom: #aaa 1px solid;
     margin-bottom: 1.5rem;
 }
-
 nav a {
     text-decoration: none;
 }
