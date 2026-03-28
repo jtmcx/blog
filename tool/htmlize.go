@@ -9,6 +9,8 @@ import (
 	"github.com/beevik/etree"
 )
 
+// This ugly collection of functions converts an XML post to HTML.
+
 func articleHtml(doc *etree.Document) (template.HTML, error) {
 	article := doc.FindElement("article")
 	if article == nil {
@@ -144,56 +146,4 @@ func groupSections(doc *etree.Document) *etree.Document {
 		}
 	}
 	return result
-}
-
-func ValidatePost(doc *etree.Document) error {
-	article := doc.FindElement("article")
-	if article == nil {
-		return fmt.Errorf("missing root <article> element")
-	}
-
-	meta := article.FindElement("meta")
-	if meta == nil {
-		return fmt.Errorf("missing <meta> element")
-	}
-	// Check for required elements
-	if meta.FindElement("title") == nil {
-		return fmt.Errorf("meta: missing <title>")
-	}
-	if meta.FindElement("published") == nil {
-		return fmt.Errorf("meta: missing <published>")
-	}
-	// Check for unknown elements
-	for _, el := range meta.ChildElements() {
-		switch el.Tag {
-		case "title", "published", "updated", "uuid", "summary":
-		default:
-			return fmt.Errorf("meta: unexpected element: <%s>", el.Tag)
-		}
-	}
-
-	for _, el := range article.ChildElements() {
-		switch el.Tag {
-		case "meta":
-			continue
-		case "h", "code":
-			continue
-		case "p", "blockquote":
-			for _, child := range el.ChildElements() {
-				switch child.Tag {
-				case "i":
-					continue
-				case "a":
-					if child.SelectAttr("href") == nil {
-						return fmt.Errorf("<a> missing required attribute 'href'")
-					}
-				default:
-					return fmt.Errorf("unexpected element: <%s>", child.Tag)
-				}
-			}
-		default:
-			return fmt.Errorf("article: unexpected element: <%s>", el.Tag)
-		}
-	}
-	return nil
 }

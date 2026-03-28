@@ -267,9 +267,6 @@ func writePost(post PostEntry) {
 	if err := doc.ReadFromFile(post.SourcePath); err != nil {
 		log.Fatalf("Failed to generate %s: %v", out, err)
 	}
-	if err := ValidatePost(doc); err != nil {
-		log.Fatalf("Failed to generate %s: %v", out, err)
-	}
 	content, err := articleHtml(doc)
 	if err != nil {
 		log.Fatalf("Failed to generate %s: %v", out, err)
@@ -277,8 +274,9 @@ func writePost(post PostEntry) {
 
 	// Render the post.
 	page := Page{
-		Title: post.Meta.Title,
-		Path:  post.Path(),
+		Title:   post.Meta.Title,
+		Path:    post.Path(),
+		HasMath: len(doc.FindElements("//m")) > 0,
 	}
 	var data struct {
 		Meta    PostMeta

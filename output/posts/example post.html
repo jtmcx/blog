@@ -6,6 +6,7 @@
   <title>jtm.cx | Sample Post</title>
   <link rel="stylesheet" href="../assets/fonts.css">
   <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/katex-0.16.44/katex.min.css">
   <link href="../feed.atom" type="application/atom+xml" rel="alternate" title="jtm.cx" />
   <meta property="og:type" content="article" />
   <meta property="og:title" content="Sample Post" />
@@ -38,15 +39,22 @@ int main(int argc, char *argv[])
 }</code></pre><p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum
 dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat
 non proident, sunt in culpa qui officia deserunt mollit anim id est
-laborum.</p></section><section><h2>Heading 1</h2><blockquote>
+laborum.</p></section><section><h2>Block Quotes</h2><blockquote>
 Four <a href="https://en.wikipedia.org/wiki/20_(number)">score</a>
 and seven years ago our fathers brought forth on this continent, a new
 nation, conceived in Liberty, and dedicated to the proposition that all
 men are created equal.
-</blockquote></section>
+</blockquote></section><section><h2>Math</h2><p><span class="math">\pi</span> is approximately equal to 3.141526. <span class="math">x_{1} \in \Gamma</span>
+</p></section>
 </main>
 <footer>
 <p>©2026 jtm | Content licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA</a>.</p>
 </footer>
+<script src="../assets/katex-0.16.44/katex.min.js"></script>
+<script>
+  document.querySelectorAll('.math').forEach(el => {
+    katex.render(el.textContent, el, {throwOnError: false});
+  });
+</script>
 </body>
 </html>

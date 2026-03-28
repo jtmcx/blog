@@ -28,7 +28,7 @@ dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat
 non proident, sunt in culpa qui officia deserunt mollit anim id est
 laborum.</p>
 
-<h>Heading 1</h>
+<h>Block Quotes</h>
 
 <blockquote>
 Four <a href="https://en.wikipedia.org/wiki/20_(number)">score</a>
@@ -36,5 +36,10 @@ and seven years ago our fathers brought forth on this continent, a new
 nation, conceived in Liberty, and dedicated to the proposition that all
 men are created equal.
 </blockquote>
+
+<h>Math</h>
+
+<p><m>\pi</m> is approximately equal to 3.141526. <m>x_{1} \in \Gamma</m>
+</p>
 
 </article>
