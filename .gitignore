@@ -1,0 +1,7 @@
+dist-newstyle/
+result
+result-*
+.direnv/
+_build/
+_site/
+.obsidian

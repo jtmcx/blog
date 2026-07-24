@@ -14,25 +14,20 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 -----------------------------------------------------------------------
 
-All articles authored under the 'content/posts' directory are licensed
-under the Creative Commons Attribution-ShareAlike (CC BY-SA) license.
-A copy of the license and more information can be found at:
+All articles authored under the 'posts' directory are licensed under the
+Creative Commons Attribution-ShareAlike (CC BY-SA) license.  A copy of
+the license and more information can be found at:
 
     https://creativecommons.org/licenses/by-sa/4.0/
 
 -----------------------------------------------------------------------
 
-KaTeX distribution in the 'assets/katex-0.16.44' directory is licensed
+KaTeX distribution in the 'static/katex-0.16.44' directory is licensed
 under MIT. License details can be found in the link below:
 
     https://github.com/KaTeX/KaTeX/blob/main/LICENSE
 
 -----------------------------------------------------------------------
 
-Atkinson Hyperlegible fonts found in the 'assets/font' directory are
-licensed under the SIL Open Font License, Version 1.1. A copy of the
-license can be found at the link below. Fonts designed by the
-Braille Institute of America, Inc.
-
-    https://github.com/googlefonts/atkinson-hyperlegible/blob/main/OFL.txt
-
+Adobe Source Serif 4 and JetBrains Mono fonts found in the 'static/fonts'
+directory are licensed under the SIL Open Font License, Version 1.1.
