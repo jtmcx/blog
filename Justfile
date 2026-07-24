@@ -6,13 +6,13 @@ default:
 build:
     cabal build
 
-# Generate the site into _site/
+# Generate the site
 site *args: build
     cabal run ssg -- {{args}}
 
 # Remove generated site output and Shake's build database
 clean:
-    rm -rf _site _build
+    rm -rf _site _build html.tgz
 
 # clean, plus cabal's own build artifacts
 distclean: clean
@@ -30,5 +30,8 @@ test:
 # Start a GHCi REPL
 repl:
     cabal repl
+
+tar: site
+    tar zcf html.tgz -C _site/html .
 
 alias ghci := repl
