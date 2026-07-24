@@ -320,6 +320,8 @@ buildBaseHead :: Builder ()
 buildBaseHead = do
   meta_ [charset_ "UTF-8"]
   meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1.0"]
+  withRelative [absfile|/static/favicon.ico|] $ \path -> 
+    link_ [rel_ "icon", type_ "image/x-icon", href_ path]
   withRelative [absfile|/static/fonts.css|] $ \path -> 
     link_ [rel_ "stylesheet", href_ path]
   withRelative [absfile|/static/style.css|] $ \path -> 
