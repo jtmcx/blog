@@ -118,14 +118,14 @@
     font-family: "JetBrains Mono";
     font-weight: 100;
     font-style: normal;
-    src: url("fonts/JetBrainsMono-ExtraThin.woff2") format("woff2");
+    src: url("fonts/JetBrainsMono-Thin.woff2") format("woff2");
 }
 
 @font-face {
     font-family: "JetBrains Mono";
     font-weight: 100;
     font-style: italic;
-    src: url("fonts/JetBrainsMono-ExtraThinItalic.woff2") format("woff2");
+    src: url("fonts/JetBrainsMono-ThinItalic.woff2") format("woff2");
 }
 
 @font-face {
