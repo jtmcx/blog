@@ -44,8 +44,8 @@ baseUri :: URI
 baseUri = [uri|https://jtm.cx|]
 
 -- | The directory to place the generated HTML.
-siteDir :: Path Rel Dir
-siteDir = [reldir|_site|]
+htmlDir :: Path Rel Dir
+htmlDir = [reldir|_site/html|]
 
 -- | The directory for storing shake metadata files.
 shakeDir :: Path Rel Dir
@@ -57,7 +57,7 @@ shakeDir = [reldir|_build|]
 
 -- | Unfortunately, the path library uses 'MonadThrow m' everywhere.
 -- Shake's 'Action' monad _can't_ implement 'MonadThrow'. There's
--- some discussion about how it's laws aren't satisifed [1], though, I
+-- some discussion about how its laws aren't satisfied [1], though, I
 -- admit I don't fully understand. This is very annoying, because
 -- simple path based operations (e.g. 'replaceExtension') can't happen
 -- inside the 'Action' monad. To work around this, we define 'orFail'
@@ -282,7 +282,7 @@ readAllPostMetas = do
 -- HTML is constructed using the 'lucid' package. Note that some HTML
 -- builders are not pure: some builders have Shake side-effects. This
 -- is an awkward choice, but works well for me. If the HTML builder is
--- is pure, it has type `HtmlT m`. Otherwise, it has type `HtmlT Action`.
+-- pure, it has type `HtmlT m`. Otherwise, it has type `HtmlT Action`.
 -- We prefer `HtmlT m` over `Html` so that we're not pinned to the 
 -- `Identity` monad.
 
@@ -304,7 +304,7 @@ withRelative target f = do
 -- | Generate HTML and write it to a file.
 runBuilder :: Path Rel File -> Builder () -> Action ()
 runBuilder out builder = do
-  path <- exnFail $ [absdir|/|] </$ stripProperPrefix siteDir out
+  path <- exnFail $ [absdir|/|] </$ stripProperPrefix htmlDir out
   content <- runReaderT (renderTextT builder) (BuildContext path)
   writeFile' out (TL.toStrict content)
 
@@ -467,7 +467,7 @@ buildHome = do
 
 -- | Prefix a file pattern with the site output directory.
 sitePattern :: FilePattern -> FilePattern
-sitePattern pat = (toFilePath siteDir FilePath.</> pat)
+sitePattern pat = (toFilePath htmlDir FilePath.</> pat)
 
 main :: IO ()
 main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ runShakePlus () $ do
@@ -479,10 +479,10 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ runShakePlus 
 
     -- Copy everything in static.
     files <- getDirectoryFiles [reldir|.|] ["static//*"]
-    needP $ map (siteDir </>) files
+    needP $ map (htmlDir </>) files
     -- Build all the posts.
     posts <- getDirectoryFiles [reldir|.|] ["posts/*.md"]
-    needP =<< mapM ((siteDir </$) . (-<.> ".html")) posts
+    needP =<< mapM ((htmlDir </$) . (-<.> ".html")) posts
 
   sitePattern "index.html" %> \out -> liftAction $ do
     runBuilder out buildHome
@@ -490,7 +490,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ runShakePlus 
 
   -- Generate a post from a markdown file
   sitePattern "posts/*.html" %> \out -> liftAction $ do
-    src <- exnFail $ stripProperPrefix siteDir =<< out -<.> ".md"
+    src <- exnFail $ stripProperPrefix htmlDir =<< out -<.> ".md"
     doc <- readMarkdown src
     runBuilder out $ buildPost doc
     putInfo $ "Generated " ++ (toFilePath out)
@@ -504,6 +504,6 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ runShakePlus 
       Nothing -> fail "Failed to generate Atom feed"
 
   sitePattern "static//*" %> \out -> do
-    src <- stripProperPrefix siteDir out
+    src <- stripProperPrefix htmlDir out
     copyFileChanged src out
     liftAction $ putInfo $ "Copied " ++ (toFilePath out)
