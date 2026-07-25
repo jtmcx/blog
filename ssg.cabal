@@ -20,6 +20,7 @@ executable ssg
                     , path
                     , shake
                     , shake-plus
+                    , sitemap-gen
                     , template-haskell
                     , text
                     , time

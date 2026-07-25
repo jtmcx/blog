@@ -31,6 +31,7 @@ import Text.Pandoc.Highlighting (pygments)
 import Text.Pandoc.Shared (stringify)
 import Text.Atom.Feed (Entry(..), TextContent (..), Feed (..))
 import qualified Text.Atom.Feed.Export as Atom
+import Web.Sitemap.Gen (Sitemap (..), SitemapUrl (..), renderSitemap)
 
 -- Configuration
 -----------------------------------------------------------------------
@@ -215,6 +216,37 @@ atomPostEntry meta = Entry
   , entryAttrs = []
   , entryOther = []
   }
+
+
+-- Sitemap
+-----------------------------------------------------------------------
+
+-- | Midnight UTC on the given day.
+dayToUTCTime :: Day -> UTCTime
+dayToUTCTime day = UTCTime day 0
+
+-- | The sitemap entry for a given page.
+sitemapUrl :: URI -> Maybe Day -> SitemapUrl
+sitemapUrl target updated = SitemapUrl
+  { sitemapLocation = uriText target
+  , sitemapLastModified = dayToUTCTime <$> updated
+  , sitemapChangeFrequency = Nothing
+  , sitemapPriority = Nothing
+  }
+
+-- | The sitemap entry for a given post.
+sitemapPostUrl :: (Path Rel File, PostMeta) -> Action SitemapUrl
+sitemapPostUrl (src, meta) = do
+  file <- exnFail $ [absdir|/|] </$ (src -<.> ".html")
+  pure $ sitemapUrl (qualifyWith baseUri file) (Just (lastUpdate meta))
+
+-- | The full sitemap for the home page and all posts.
+sitemap :: [(Path Rel File, PostMeta)] -> Action Sitemap
+sitemap posts = do
+  postUrls <- mapM sitemapPostUrl posts
+  let homeUrl = sitemapUrl (qualifyWith baseUri [absfile|/index.html|]) Nothing
+  pure $ Sitemap (homeUrl : postUrls)
+
 
 -- Actions
 -----------------------------------------------------------------------
@@ -464,6 +496,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ runShakePlus 
   phony "all" $ do
     need [sitePattern "index.html"]
     need [sitePattern "atom.xml"]
+    need [sitePattern "sitemap.xml"]
 
     -- Copy everything in static.
     files <- getDirectoryFiles [reldir|.|] ["static//*"]
@@ -490,6 +523,12 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ runShakePlus 
         writeFile' out (TL.toStrict xml)
         putInfo $ "Generated " ++ (toFilePath out)
       Nothing -> fail "Failed to generate Atom feed"
+
+  sitePattern "sitemap.xml" %> \out -> liftAction $ do
+    posts <- readAllPostMetas
+    xml <- renderSitemap <$> sitemap posts
+    writeFile' out (TE.decodeUtf8 xml)
+    putInfo $ "Generated " ++ (toFilePath out)
 
   sitePattern "static//*" %> \out -> do
     src <- stripProperPrefix htmlDir out
