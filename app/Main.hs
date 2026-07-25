@@ -307,31 +307,37 @@ type Builder = HtmlT (StateT BuildState Action)
 data BuildState = BuildState
   { pagePath :: Path Abs File 
     -- ^ The target location of the page we're building.
-  , pageReferences :: Set (Path Abs File)
-    -- ^ Set of internal files that this page links to.
+  , pageInternalLinks :: Set (Path Abs File)
+    -- ^ Set of references to internal pages.
   }
 
 -- | Run a shake action in a builder.
 action :: Action a -> Builder a
 action = lift . lift
 
--- | Return the fully-qualified URI for this page.
--- For example: @ https://example.com/path/to/page.html @
-pageUri :: Builder URI
-pageUri = do
-  path <- lift $ gets pagePath
-  pure $ qualifyWith baseUri path
+-- | Get the target location of the page we're building.
+getPagePath :: Builder (Path Abs File)
+getPagePath = lift $ gets pagePath
 
-addReference :: Path Abs File -> Builder ()
-addReference f = lift $ modify $ \s ->
-  s { pageReferences = Set.insert f (pageReferences s) }
+-- | Get the target directory of the page we're building.
+getPageDir :: Builder (Path Abs Dir)
+getPageDir = parent <$> getPagePath
+
+-- | Return the fully-qualified URI for this page.
+getPageUri :: Builder URI
+getPageUri = qualifyWith baseUri <$> getPagePath
+
+-- | Track a link to an internal page.
+trackInternalLink :: Path Abs File -> Builder ()
+trackInternalLink f = lift $ modify $ \s ->
+  s { pageInternalLinks = Set.insert f (pageInternalLinks s) }
 
 -- | Calculate the path relative to the current page.
 withRelative :: Path Abs File -> (Text -> Builder a) -> Builder a
 withRelative target f = do
-  addReference target
-  src <- lift $ gets pagePath
-  f (T.pack $ relativeFile (parent src) target)
+  trackInternalLink target
+  dir <- getPageDir
+  f (T.pack $ relativeFile dir target)
 
 -- | Generate HTML and write it to a file.
 runBuilder :: Path Rel File -> Builder () -> Action BuildState
@@ -395,7 +401,7 @@ buildPostMeta meta = do
     prop "og:type" "article"
     prop "og:title" (postTitle meta)
     prop "og:description" `mapM_` postSummary meta
-    prop "og:url" . uriText =<< pageUri
+    prop "og:url" . uriText =<< getPageUri
     prop "article:published_time" $ formatDay (postDate meta)
   where
     -- https://github.com/chrisdone/lucid/pull/168
