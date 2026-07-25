@@ -53,6 +53,10 @@ htmlDir = [reldir|_site/html|]
 shakeDir :: Path Rel Dir
 shakeDir = [reldir|_build|]
 
+-- | The directory to place the internal link cache.
+linksDir :: Path Rel Dir
+linksDir = shakeDir </> [reldir|links|]
+
 
 -- Utilities
 -----------------------------------------------------------------------
@@ -292,6 +296,17 @@ readAllPostMetas = do
   need $ map toFilePath posts
   zip posts <$> mapM readPostMeta posts
 
+-- | Read a page's tracked internal links from a file.
+readLinks :: FilePath -> Action (Set (Path Abs File))
+readLinks path = do
+  contents <- readFile' path
+  Set.fromList <$> mapM parseAbsFile (lines contents)
+
+-- | Write a page's tracked internal links to a file.
+writeLinks :: FilePath -> Set (Path Abs File) -> Action ()
+writeLinks out links = writeFile' out content
+  where content = unlines (map toFilePath (Set.toList links))
+
 
 -- HTML Builders
 -----------------------------------------------------------------------
@@ -499,19 +514,18 @@ buildHome = do
 -- Shake rules
 -----------------------------------------------------------------------
 
--- | Prefix a file pattern with the site output directory.
-sitePattern :: FilePattern -> FilePattern
-sitePattern pat = (toFilePath htmlDir FilePath.</> pat)
+(</?>) :: Path a Dir -> FilePattern -> FilePattern
+p </?> q = (toFilePath p) FilePath.</> q
 
 main :: IO ()
 main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
   want ["all"]
 
   phony "all" $ do
-    need [sitePattern "index.html"]
-    need [sitePattern "atom.xml"]
-    need [sitePattern "sitemap.xml"]
-    need [sitePattern "favicon.ico"]
+    need [htmlDir </?> "index.html"]
+    need [htmlDir </?> "atom.xml"]
+    need [htmlDir </?> "sitemap.xml"]
+    need [htmlDir </?> "favicon.ico"]
 
     -- Copy everything in static.
     files <- getDirectoryFiles "" ["static//*"] >>= mapM parseRelFile
@@ -522,19 +536,39 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
     replacedExt <- (mapM ((-<.> ".html")) posts)
     need $ map (toFilePath . (htmlDir </>)) replacedExt
 
-  sitePattern "index.html" %> \out' -> do
-    out <- parseRelFile out'
-    _ <- runBuilder out buildHome
-    putInfo $ "Generated " ++ (toFilePath out)
+    -- Check that every internally-linked target actually gets built.
+    postLinks <- mapM (addExtension ".links") replacedExt
+    let linkFiles = map (toFilePath . (linksDir </>)) ([relfile|index.html.links|] : postLinks)
+    need linkFiles
+    links <- Set.unions <$> mapM readLinks linkFiles
+    targets <- mapM (replaceProperPrefix root htmlDir) (Set.toList links)
+    need $ map toFilePath targets
 
-  sitePattern "posts/*.html" %> \out' -> do
-    out <- parseRelFile out'
-    src <- out -<.> ".md" >>= stripProperPrefix htmlDir
-    doc <- readMarkdown src
-    _ <- runBuilder out $ buildPost doc
-    putInfo $ "Generated " ++ (toFilePath out)
+  [ htmlDir </?> "index.html",
+    linksDir </?> "index.html.links" ] &%>
+    \case 
+      [htmlOut, linksOut] -> do
+        out <- parseRelFile htmlOut
+        st <- runBuilder out buildHome
+        putInfo $ "Generated " ++ htmlOut
+        writeLinks linksOut (pageInternalLinks st)
+        putInfo $ "Generated " ++ linksOut
+      _ -> undefined
 
-  sitePattern "atom.xml" %> \out -> do
+  [ htmlDir </?> "posts/*.html", 
+    linksDir </?> "posts/*.html.links"] &%> 
+    \case
+      [htmlOut, linksOut] -> do
+        out <- parseRelFile htmlOut
+        src <- out -<.> ".md" >>= stripProperPrefix htmlDir
+        doc <- readMarkdown src
+        st <- runBuilder out $ buildPost doc
+        putInfo $ "Generated " ++ htmlOut
+        writeLinks linksOut (pageInternalLinks st)
+        putInfo $ "Generated " ++ linksOut
+      _ -> undefined
+
+  htmlDir </?> "atom.xml" %> \out -> do
     posts <- readAllPostMetas
     case Atom.textFeed (atomFeed (map snd posts)) of
       Just xml -> do
@@ -542,17 +576,17 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
         putInfo $ "Generated " ++ out
       Nothing -> fail "Failed to generate Atom feed"
 
-  sitePattern "sitemap.xml" %> \out -> do
+  htmlDir </?> "sitemap.xml" %> \out -> do
     posts <- readAllPostMetas
     xml <- decodeUtf8 . renderSitemap <$> sitemap posts
     writeFile' out (TL.unpack xml)
     putInfo $ "Generated " ++ out
 
-  sitePattern "static//*" %> \out -> do
+  htmlDir </?> "static//*" %> \out -> do
     src <- parseRelFile out >>= stripProperPrefix htmlDir
     copyFileChanged (toFilePath src) out
     putInfo $ "Copied " ++ out
 
-  sitePattern "favicon.ico" %> \out -> do
+  htmlDir </?> "favicon.ico" %> \out -> do
     copyFileChanged "static/favicon.ico" out
     putInfo $ "Copied " ++ out
