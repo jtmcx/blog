@@ -27,11 +27,17 @@ test:
     cabal test
     cabal repl --with-compiler=doctest
 
+# Generate haddock documentation
+doc:
+    cabal haddock --haddock-executables
+
 # Start a GHCi REPL
 repl:
     cabal repl
 
+# Archive the generated site.
 tar: site
     tar zcf html.tgz -C _site/html .
+
 
 alias ghci := repl

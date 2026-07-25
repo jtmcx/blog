@@ -337,7 +337,7 @@ withRelative target f = do
 -- | Generate HTML and write it to a file.
 runBuilder :: Path Rel File -> Builder () -> Action BuildState
 runBuilder out builder = do
-  path <- root </$> stripProperPrefix htmlDir out
+  path <- replaceProperPrefix htmlDir root out
   (content, st) <- runStateT (renderTextT builder) (BuildState path Set.empty)
   writeFile' (toFilePath out) (TL.unpack content)
   pure st
