@@ -7,7 +7,7 @@ import Data.Maybe (fromMaybe)
 import Data.Ord (Down (Down))
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text.Lazy as TL
 import Data.Time (Day, fromGregorian, UTCTime(..))
 import Data.Time.Format (defaultTimeLocale, parseTimeM, formatTime)
@@ -528,7 +528,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ runShakePlus 
   sitePattern "sitemap.xml" %> \out -> liftAction $ do
     posts <- readAllPostMetas
     xml <- renderSitemap <$> sitemap posts
-    writeFile' out (TE.decodeUtf8 xml)
+    writeFile' out (decodeUtf8 xml)
     putInfo $ "Generated " ++ (toFilePath out)
 
   sitePattern "static//*" %> \out -> do
