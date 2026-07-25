@@ -1,10 +1,11 @@
 module Main (main) where
 
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Reader (asks, ReaderT (runReaderT))
 import Data.List (sortOn)
 import Data.Maybe (fromMaybe)
 import Data.Ord (Down (Down))
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
@@ -32,6 +33,7 @@ import Text.Pandoc.Shared (stringify)
 import Text.Atom.Feed (Entry(..), TextContent (..), Feed (..))
 import qualified Text.Atom.Feed.Export as Atom
 import Web.Sitemap.Gen (Sitemap (..), SitemapUrl (..), renderSitemap)
+import Control.Monad.Trans.State (StateT (..), gets, modify)
 
 -- Configuration
 -----------------------------------------------------------------------
@@ -256,14 +258,14 @@ exnFail :: (MonadFail m, Show e) => Either e a -> m a
 exnFail = either (fail . show) pure
 
 -- | Run a pandoc monad as an action. Fails on error.
-runPandoc :: (MonadAction m, MonadFail m) => PandocPure a -> m a
+runPandoc :: PandocPure a -> Action a
 runPandoc m = do
   case runPure m of
     Right x -> pure x
     Left err -> fail ("pandoc: " ++ show err)
 
 -- | Read and parse a markdown file.
-readMarkdown :: (MonadAction m, MonadFail m) => Path a File -> m Pandoc
+readMarkdown :: Path a File -> Action Pandoc
 readMarkdown path = do
     contents <- readFile' path
     runPandoc $ Pandoc.readMarkdown readerOptions contents
@@ -276,7 +278,7 @@ readMarkdown path = do
       }
 
 -- | Convert a pandoc document to an html string.
-documentHtml :: (MonadAction m, MonadFail m) => Pandoc -> m Text
+documentHtml :: Pandoc -> Action Text
 documentHtml doc = runPandoc $ Pandoc.writeHtml5String writerOptions doc
   where
     writerOptions :: Pandoc.WriterOptions
@@ -284,12 +286,12 @@ documentHtml doc = runPandoc $ Pandoc.writeHtml5String writerOptions doc
       { Pandoc.writerHighlightStyle = Just pygments }
 
 -- | Read and parse the front-matter of a post.
-readPostMeta :: (MonadAction m, MonadFail m) => Path a File -> m PostMeta
+readPostMeta :: Path a File -> Action PostMeta
 readPostMeta path = readMarkdown path >>= parsePostMeta
 
 -- | Read and parse the front-matter for all posts. Note that posts
 -- are not sorted in any way.
-readAllPostMetas :: (MonadAction m, MonadFail m) => m [(Path Rel File, PostMeta)]
+readAllPostMetas :: Action [(Path Rel File, PostMeta)]
 readAllPostMetas = do
   posts <- getDirectoryFiles [reldir|.|] ["posts/*.md"]
   need $ map toFilePath posts
@@ -299,34 +301,46 @@ readAllPostMetas = do
 -- HTML Builders
 -----------------------------------------------------------------------
 
--- HTML is constructed using the 'lucid' package. Note that some HTML
--- builders are not pure: some builders have Shake side-effects. This
--- is an awkward choice, but works well for me. If the HTML builder is
--- pure, it has type `HtmlT m`. Otherwise, it has type `HtmlT Action`.
--- We prefer `HtmlT m` over `Html` so that we're not pinned to the 
--- `Identity` monad.
+-- | The HTML builder monad.
+type Builder = HtmlT (StateT BuildState Action)
 
-data BuildContext = BuildContext
+data BuildState = BuildState
   { pagePath :: Path Abs File 
     -- ^ The target location of the page we're building.
+  , pageReferences :: Set (Path Abs File)
+    -- ^ Set of internal files that this page links to.
   }
 
-type Builder a = HtmlT (ReaderT BuildContext Action) a
-
+-- | Run a shake action in a builder.
 action :: Action a -> Builder a
 action = lift . lift
 
+-- | Return the fully-qualified URI for this page.
+-- For example: @ https://example.com/path/to/page.html @
+pageUri :: Builder URI
+pageUri = do
+  path <- lift $ gets pagePath
+  pure $ qualifyWith baseUri path
+
+addReference :: Path Abs File -> Builder ()
+addReference f = lift $ modify $ \s ->
+  s { pageReferences = Set.insert f (pageReferences s) }
+
+-- | Calculate the path relative to the current page.
 withRelative :: Path Abs File -> (Text -> Builder a) -> Builder a
 withRelative target f = do
-  src <- lift $ asks pagePath
+  addReference target
+  src <- lift $ gets pagePath
   f (T.pack $ relativeFile (parent src) target)
 
 -- | Generate HTML and write it to a file.
-runBuilder :: Path Rel File -> Builder () -> Action ()
+runBuilder :: Path Rel File -> Builder () -> Action BuildState
 runBuilder out builder = do
   path <- exnFail $ [absdir|/|] </$ stripProperPrefix htmlDir out
-  content <- runReaderT (renderTextT builder) (BuildContext path)
+  (content, st) <- runStateT (renderTextT builder) (BuildState path Set.empty)
   writeFile' out (TL.toStrict content)
+  pure st
+
 
 -- Base HTML
 
@@ -377,12 +391,11 @@ buildBaseFooter = do
 -- | Build OpenGraph metadata for this post. See https://ogp.me/
 buildPostMeta :: PostMeta -> Builder ()
 buildPostMeta meta = do
-    path <- lift $ asks pagePath
     prop "og:site_name" siteName
     prop "og:type" "article"
     prop "og:title" (postTitle meta)
     prop "og:description" `mapM_` postSummary meta
-    prop "og:url" (uriText (qualifyWith baseUri path))
+    prop "og:url" . uriText =<< pageUri
     prop "article:published_time" $ formatDay (postDate meta)
   where
     -- https://github.com/chrisdone/lucid/pull/168
@@ -507,14 +520,14 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ runShakePlus 
     needP =<< mapM ((htmlDir </$) . (-<.> ".html")) posts
 
   sitePattern "index.html" %> \out -> liftAction $ do
-    runBuilder out buildHome
+    _ <- runBuilder out buildHome
     putInfo $ "Generated " ++ (toFilePath out)
 
   -- Generate a post from a markdown file
   sitePattern "posts/*.html" %> \out -> liftAction $ do
     src <- exnFail $ stripProperPrefix htmlDir =<< out -<.> ".md"
     doc <- readMarkdown src
-    runBuilder out $ buildPost doc
+    _ <- runBuilder out $ buildPost doc
     putInfo $ "Generated " ++ (toFilePath out)
 
   sitePattern "atom.xml" %> \out -> liftAction $ do
