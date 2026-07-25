@@ -1,6 +1,5 @@
 module Main (main) where
 
-import Control.Monad.Catch.Pure (SomeException)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Reader (asks, ReaderT (runReaderT))
 import Data.List (sortOn)
@@ -8,10 +7,11 @@ import Data.Maybe (fromMaybe)
 import Data.Ord (Down (Down))
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Lazy as TL
-import Data.Time (Day, fromGregorian)
+import Data.Time (Day, fromGregorian, UTCTime(..))
 import Data.Time.Format (defaultTimeLocale, parseTimeM, formatTime)
-import Data.UUID ( UUID )
+import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import qualified Data.UUID.V5 as UUIDV5
 import Development.Shake (putInfo)
@@ -23,7 +23,7 @@ import Main.Path.Combinators
 import Main.Path.Relative
 import Network.URI (URI (..), escapeURIString, isUnescapedInURIComponent, uriToString)
 import Network.URI.Static (uri)
-import Text.Pandoc ( enableExtension, pandocExtensions)
+import Text.Pandoc (enableExtension, pandocExtensions)
 import qualified Text.Pandoc as Pandoc
 import Text.Pandoc.Class (PandocPure, runPure)
 import Text.Pandoc.Definition (Pandoc (..), lookupMeta)
@@ -54,25 +54,6 @@ shakeDir = [reldir|_build|]
 
 -- Utilities
 -----------------------------------------------------------------------
-
--- | Unfortunately, the path library uses 'MonadThrow m' everywhere.
--- Shake's 'Action' monad _can't_ implement 'MonadThrow'. There's
--- some discussion about how its laws aren't satisfied [1], though, I
--- admit I don't fully understand. This is very annoying, because
--- simple path based operations (e.g. 'replaceExtension') can't happen
--- inside the 'Action' monad. To work around this, we define 'orFail'
--- to interpret a 'MonadThrow' as an 'Either', and then 'fail' if 'Left'.
---
--- There's also some discussion about defining an alternative path API
--- that uses 'MonadError' instead of 'MonadThrow', but that seems to
--- have been abandoned [2] [3].
---
--- [1]: https://neilmitchell.blogspot.com/2014/08/continuations-and-exceptions.html
--- [2]: https://github.com/commercialhaskell/path/issues/149
--- [3]: https://github.com/commercialhaskell/path/pull/162
-
-exnFail :: MonadFail m => Either SomeException a -> m a
-exnFail = either (fail . show) pure
 
 -- | Parse a date in YYYY-MM-DD format.
 parseDay :: MonadFail m => Text -> m Day
@@ -234,6 +215,13 @@ atomPostEntry meta = Entry
   , entryAttrs = []
   , entryOther = []
   }
+
+-- Actions
+-----------------------------------------------------------------------
+
+-- | Unwrap an 'Either', running 'fail' if 'Left'.
+exnFail :: (MonadFail m, Show e) => Either e a -> m a
+exnFail = either (fail . show) pure
 
 -- | Run a pandoc monad as an action. Fails on error.
 runPandoc :: (MonadAction m, MonadFail m) => PandocPure a -> m a
