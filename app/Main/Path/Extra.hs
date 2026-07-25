@@ -1,11 +1,36 @@
-module Main.Path.Relative
-  ( maybeParent
+module Main.Path.Extra
+  ( dot
+  , root
+  , (-<.>)
+  , (</$>)
+  , (<$/>)
+  , maybeParent
   , resolveAgainst
   , relativeFile
   ) where
 
-import Path 
+import Main.Path 
 import System.FilePath ( splitDirectories, joinPath )
+
+-- | The root directory @/@.
+root :: Path Abs Dir
+root = [absdir|/|]
+
+-- | The current directory @.@.
+dot :: Path Rel Dir
+dot = [reldir|.|]
+
+-- | Replace the extension for a given file.
+(-<.>) :: MonadFail m => Path a File -> String -> m (Path a File)
+(-<.>) = flip replaceExtension
+
+-- | Join two paths @p </$ q@, where 'q' might fail.
+(</$>) :: MonadFail m => Path a Dir -> m (Path Rel t) -> m (Path a t)
+(</$>) p q = (p </>) <$> q
+
+-- | Join two paths @p $/> q@, where 'p' might fail.
+(<$/>) :: MonadFail m => m (Path a Dir) -> Path Rel t -> m (Path a t)
+(<$/>) p q = (</> q) <$> p
 
 -- | Get the parent of a given path. Fail if we're at the root.
 maybeParent :: Path a t -> Maybe (Path a Dir)

@@ -6,8 +6,8 @@ build-type:         Simple
 executable ssg
     main-is:          Main.hs
     hs-source-dirs:   app
-    other-modules:    Main.Path.Combinators
-                    , Main.Path.Relative
+    other-modules:    Main.Path
+                    , Main.Path.Extra
     build-tool-depends: doctest:doctest
     build-depends:    base >=4 && <5
                     , containers
@@ -20,7 +20,6 @@ executable ssg
                     , pandoc-types
                     , path
                     , shake
-                    , shake-plus
                     , sitemap-gen
                     , template-haskell
                     , text

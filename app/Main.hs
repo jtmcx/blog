@@ -8,20 +8,19 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text.Lazy as TL
+import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Time (Day, fromGregorian, UTCTime(..))
 import Data.Time.Format (defaultTimeLocale, parseTimeM, formatTime)
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import qualified Data.UUID.V5 as UUIDV5
-import Development.Shake (putInfo)
+import Development.Shake hiding (action)
 import qualified Development.Shake.FilePath as FilePath
-import Development.Shake.Plus hiding ((-<.>))
 import Lucid
 import Lucid.Base (makeAttributes)
-import Main.Path.Combinators
-import Main.Path.Relative
+import Main.Path
+import Main.Path.Extra
 import Network.URI (URI (..), escapeURIString, isUnescapedInURIComponent, uriToString)
 import Network.URI.Static (uri)
 import Text.Pandoc (enableExtension, pandocExtensions)
@@ -239,7 +238,7 @@ sitemapUrl target updated = SitemapUrl
 -- | The sitemap entry for a given post.
 sitemapPostUrl :: (Path Rel File, PostMeta) -> Action SitemapUrl
 sitemapPostUrl (src, meta) = do
-  file <- exnFail $ [absdir|/|] </$ (src -<.> ".html")
+  file <- root </$> (src -<.> ".html")
   pure $ sitemapUrl (qualifyWith baseUri file) (Just (lastUpdate meta))
 
 -- | The full sitemap for the home page and all posts.
@@ -253,10 +252,6 @@ sitemap posts = do
 -- Actions
 -----------------------------------------------------------------------
 
--- | Unwrap an 'Either', running 'fail' if 'Left'.
-exnFail :: (MonadFail m, Show e) => Either e a -> m a
-exnFail = either (fail . show) pure
-
 -- | Run a pandoc monad as an action. Fails on error.
 runPandoc :: PandocPure a -> Action a
 runPandoc m = do
@@ -267,8 +262,8 @@ runPandoc m = do
 -- | Read and parse a markdown file.
 readMarkdown :: Path a File -> Action Pandoc
 readMarkdown path = do
-    contents <- readFile' path
-    runPandoc $ Pandoc.readMarkdown readerOptions contents
+    contents <- readFile' (toFilePath path)
+    runPandoc $ Pandoc.readMarkdown readerOptions (T.pack contents)
   where
     readerOptions :: Pandoc.ReaderOptions
     readerOptions = Pandoc.def
@@ -293,7 +288,7 @@ readPostMeta path = readMarkdown path >>= parsePostMeta
 -- are not sorted in any way.
 readAllPostMetas :: Action [(Path Rel File, PostMeta)]
 readAllPostMetas = do
-  posts <- getDirectoryFiles [reldir|.|] ["posts/*.md"]
+  posts <- getDirectoryFiles "" ["posts/*.md"] >>= mapM parseRelFile
   need $ map toFilePath posts
   zip posts <$> mapM readPostMeta posts
 
@@ -308,7 +303,7 @@ data BuildState = BuildState
   { pagePath :: Path Abs File 
     -- ^ The target location of the page we're building.
   , pageInternalLinks :: Set (Path Abs File)
-    -- ^ Set of references to internal pages.
+    -- ^ Collected set of links to internal pages.
   }
 
 -- | Run a shake action in a builder.
@@ -342,9 +337,9 @@ withRelative target f = do
 -- | Generate HTML and write it to a file.
 runBuilder :: Path Rel File -> Builder () -> Action BuildState
 runBuilder out builder = do
-  path <- exnFail $ [absdir|/|] </$ stripProperPrefix htmlDir out
+  path <- root </$> stripProperPrefix htmlDir out
   (content, st) <- runStateT (renderTextT builder) (BuildState path Set.empty)
-  writeFile' out (TL.toStrict content)
+  writeFile' (toFilePath out) (TL.unpack content)
   pure st
 
 
@@ -477,7 +472,7 @@ buildPostListEntry src meta = do
     span_ [class_ "post-title"] link
   where
     link = do
-      file <- action $ exnFail $ [absdir|/|] </$ (src -<.> ".html")
+      file <- action $ root </$> (src -<.> ".html")
       withRelative file $ \path ->
         a_ [href_ path] (toHtml (postTitle meta))
 
@@ -509,7 +504,7 @@ sitePattern :: FilePattern -> FilePattern
 sitePattern pat = (toFilePath htmlDir FilePath.</> pat)
 
 main :: IO ()
-main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ runShakePlus () $ do
+main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
   want ["all"]
 
   phony "all" $ do
@@ -519,42 +514,45 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ runShakePlus 
     need [sitePattern "favicon.ico"]
 
     -- Copy everything in static.
-    files <- getDirectoryFiles [reldir|.|] ["static//*"]
-    needP $ map (htmlDir </>) files
-    -- Build all the posts.
-    posts <- getDirectoryFiles [reldir|.|] ["posts/*.md"]
-    needP =<< mapM ((htmlDir </$) . (-<.> ".html")) posts
+    files <- getDirectoryFiles "" ["static//*"] >>= mapM parseRelFile
+    need $ map (toFilePath . (htmlDir </>)) files
 
-  sitePattern "index.html" %> \out -> liftAction $ do
+    -- Build all the posts.
+    posts <- getDirectoryFiles "" ["posts/*.md"] >>= mapM parseRelFile
+    replacedExt <- (mapM ((-<.> ".html")) posts)
+    need $ map (toFilePath . (htmlDir </>)) replacedExt
+
+  sitePattern "index.html" %> \out' -> do
+    out <- parseRelFile out'
     _ <- runBuilder out buildHome
     putInfo $ "Generated " ++ (toFilePath out)
 
-  -- Generate a post from a markdown file
-  sitePattern "posts/*.html" %> \out -> liftAction $ do
-    src <- exnFail $ stripProperPrefix htmlDir =<< out -<.> ".md"
+  sitePattern "posts/*.html" %> \out' -> do
+    out <- parseRelFile out'
+    src <- out -<.> ".md" >>= stripProperPrefix htmlDir
     doc <- readMarkdown src
     _ <- runBuilder out $ buildPost doc
     putInfo $ "Generated " ++ (toFilePath out)
 
-  sitePattern "atom.xml" %> \out -> liftAction $ do
+  sitePattern "atom.xml" %> \out -> do
     posts <- readAllPostMetas
     case Atom.textFeed (atomFeed (map snd posts)) of
       Just xml -> do
-        writeFile' out (TL.toStrict xml)
-        putInfo $ "Generated " ++ (toFilePath out)
+        writeFile' out (TL.unpack xml)
+        putInfo $ "Generated " ++ out
       Nothing -> fail "Failed to generate Atom feed"
 
-  sitePattern "sitemap.xml" %> \out -> liftAction $ do
+  sitePattern "sitemap.xml" %> \out -> do
     posts <- readAllPostMetas
-    xml <- renderSitemap <$> sitemap posts
-    writeFile' out (decodeUtf8 xml)
-    putInfo $ "Generated " ++ (toFilePath out)
+    xml <- decodeUtf8 . renderSitemap <$> sitemap posts
+    writeFile' out (TL.unpack xml)
+    putInfo $ "Generated " ++ out
 
   sitePattern "static//*" %> \out -> do
-    src <- stripProperPrefix htmlDir out
-    copyFileChanged src out
-    liftAction $ putInfo $ "Copied " ++ (toFilePath out)
+    src <- parseRelFile out >>= stripProperPrefix htmlDir
+    copyFileChanged (toFilePath src) out
+    putInfo $ "Copied " ++ out
 
   sitePattern "favicon.ico" %> \out -> do
-    copyFileChanged [relfile|static/favicon.ico|] out
-    liftAction $ putInfo $ "Copied " ++ (toFilePath out)
+    copyFileChanged "static/favicon.ico" out
+    putInfo $ "Copied " ++ out
