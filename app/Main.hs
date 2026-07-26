@@ -21,14 +21,15 @@ import Lucid
 import Lucid.Base (makeAttributes)
 import Main.Path
 import Main.Path.Extra
-import Network.URI (URI (..), escapeURIString, isUnescapedInURIComponent, uriToString)
+import Network.URI (URI (..), escapeURIString, isUnescapedInURIComponent, uriToString, parseRelativeReference)
 import Network.URI.Static (uri)
 import Text.Pandoc (enableExtension, pandocExtensions)
 import qualified Text.Pandoc as Pandoc
 import Text.Pandoc.Class (PandocPure, runPure)
-import Text.Pandoc.Definition (Pandoc (..), lookupMeta)
+import Text.Pandoc.Definition (Pandoc (..), Inline (..), lookupMeta)
 import Text.Pandoc.Highlighting (pygments)
 import Text.Pandoc.Shared (stringify)
+import Text.Pandoc.Walk (query, walk, walkM)
 import Text.Atom.Feed (Entry(..), TextContent (..), Feed (..))
 import qualified Text.Atom.Feed.Export as Atom
 import Web.Sitemap.Gen (Sitemap (..), SitemapUrl (..), renderSitemap)
@@ -97,6 +98,7 @@ uriText :: URI -> Text
 uriText = T.pack . uriString
 
 -- | Generate the fully-qualified URI to a given page.
+-- todo: use relativeTo?
 qualifyWith :: URI -> Path Abs t -> URI
 qualifyWith base path = base { uriPath = T.unpack (escapeAbsPath path) }
 
@@ -342,6 +344,54 @@ trackInternalLink :: Path Abs File -> Builder ()
 trackInternalLink f = lift $ modify $ \s ->
   s { pageInternalLinks = Set.insert f (pageInternalLinks s) }
 
+-- | Resolve an internal link inside a document, relative to a given
+-- directory in the site.
+--
+-- >>> resolveInternalLink [absdir|/posts/|] "../static/cat.gif"
+-- Just "/static/cat.gif"
+-- >>> resolveInternalLink [absdir|/posts/|] "other.md#heading"
+-- Just "/posts/other.html"
+resolveInternalLink :: Path Abs Dir -> Text -> Maybe (Path Abs File)
+resolveInternalLink base link = do
+    p <- resolvedPath
+    case fileExtension p of
+      -- todo: should probably be a little more careful about matching the
+      -- shake rules, so that we transform file extensions in the right
+      -- places (e.g. restrict '.md' -> '.html' to '/posts', not '/static').
+      Just ".md" -> p -<.> ".html"
+      _ -> Just p
+  where
+    resolvedPath :: Maybe (Path Abs File)
+    resolvedPath =
+      case uriPath <$> parseRelativeReference (T.unpack link) of
+        Just p@('/' : _) -> parseAbsFile p
+        Just p -> resolveAgainst base p
+        Nothing -> Nothing
+
+-- | Rewrite all links in a Pandoc document monadically.
+rewriteLinksM :: Monad m => (Text -> m Text) -> Pandoc -> m Pandoc
+rewriteLinksM f = walkM $ \case
+  Link attr content (url, title) -> do
+    url' <- f url
+    pure (Link attr content (url', title))
+  Image attr content (url, title) -> do
+    url' <- f url
+    pure (Image attr content (url', title))
+  inline -> pure inline
+
+-- | Make all internal links relative and track them.
+processDocumentLinks :: Pandoc -> Builder Pandoc
+processDocumentLinks = rewriteLinksM resolve
+  where
+    resolve :: Text -> Builder Text
+    resolve link = do
+      dir <- getPageDir
+      case resolveInternalLink dir link of
+        Just internal -> do
+          trackInternalLink internal
+          withRelative internal pure
+        Nothing -> pure link  -- external link, leave untouched.
+
 -- | Calculate the path relative to the current page.
 withRelative :: Path Abs File -> (Text -> Builder a) -> Builder a
 withRelative target f = do
@@ -433,7 +483,8 @@ buildPostHeader meta =
     date = formatTime defaultTimeLocale "%b %d %Y" (postDate meta)
 
 buildPost :: Pandoc -> Builder ()
-buildPost doc = do
+buildPost unprocessedDoc = do
+  doc <- processDocumentLinks unprocessedDoc 
   meta <- action $ parsePostMeta doc
   doctypehtml_ $ do
     head_ $ do
@@ -514,8 +565,17 @@ buildHome = do
 -- Shake rules
 -----------------------------------------------------------------------
 
+-- | Prefix 'FilePattern's with a 'Dir'.
 (</?>) :: Path a Dir -> FilePattern -> FilePattern
 p </?> q = (toFilePath p) FilePath.</> q
+
+-- | Any file in the 'posts' directory that's not an .html file.
+-- These files are copied from posts to _site/posts/ if they're
+-- referenced in a document.
+postAssetPattern :: FilePath -> Bool
+postAssetPattern out =
+  (htmlDir </?> "posts//*") ?== out
+  && FilePath.takeExtension out /= ".html"
 
 main :: IO ()
 main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
@@ -568,6 +628,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
         putInfo $ "Generated " ++ linksOut
       _ -> undefined
 
+
   htmlDir </?> "atom.xml" %> \out -> do
     posts <- readAllPostMetas
     case Atom.textFeed (atomFeed (map snd posts)) of
@@ -583,6 +644,11 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
     putInfo $ "Generated " ++ out
 
   htmlDir </?> "static//*" %> \out -> do
+    src <- parseRelFile out >>= stripProperPrefix htmlDir
+    copyFileChanged (toFilePath src) out
+    putInfo $ "Copied " ++ out
+
+  postAssetPattern ?> \out -> do
     src <- parseRelFile out >>= stripProperPrefix htmlDir
     copyFileChanged (toFilePath src) out
     putInfo $ "Copied " ++ out
