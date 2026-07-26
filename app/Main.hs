@@ -1,6 +1,7 @@
 module Main (main) where
 
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.State (StateT (..), gets, modify)
 import Data.List (sortOn)
 import Data.Maybe (fromMaybe)
 import Data.Ord (Down (Down))
@@ -10,8 +11,8 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
-import Data.Time (Day, fromGregorian, UTCTime(..))
-import Data.Time.Format (defaultTimeLocale, parseTimeM, formatTime)
+import Data.Time (Day, UTCTime (..), fromGregorian)
+import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import qualified Data.UUID.V5 as UUIDV5
@@ -21,19 +22,18 @@ import Lucid
 import Lucid.Base (makeAttributes)
 import Main.Path
 import Main.Path.Extra
-import Network.URI (URI (..), escapeURIString, isUnescapedInURIComponent, uriToString, parseRelativeReference)
+import Network.URI (URI (..), escapeURIString, isUnescapedInURIComponent, parseRelativeReference, uriToString)
 import Network.URI.Static (uri)
+import Text.Atom.Feed (Entry (..), Feed (..), TextContent (..))
+import qualified Text.Atom.Feed.Export as Atom
 import Text.Pandoc (enableExtension, pandocExtensions)
 import qualified Text.Pandoc as Pandoc
 import Text.Pandoc.Class (PandocPure, runPure)
-import Text.Pandoc.Definition (Pandoc (..), Inline (..), lookupMeta)
+import Text.Pandoc.Definition (Inline (..), Pandoc (..), lookupMeta)
 import Text.Pandoc.Highlighting (pygments)
 import Text.Pandoc.Shared (stringify)
 import Text.Pandoc.Walk (query, walk, walkM)
-import Text.Atom.Feed (Entry(..), TextContent (..), Feed (..))
-import qualified Text.Atom.Feed.Export as Atom
 import Web.Sitemap.Gen (Sitemap (..), SitemapUrl (..), renderSitemap)
-import Control.Monad.Trans.State (StateT (..), gets, modify)
 
 -- Configuration
 -----------------------------------------------------------------------
@@ -58,39 +58,38 @@ shakeDir = [reldir|_build|]
 linksDir :: Path Rel Dir
 linksDir = shakeDir </> [reldir|links|]
 
-
 -- Utilities
 -----------------------------------------------------------------------
 
 -- | Parse a date in YYYY-MM-DD format.
-parseDay :: MonadFail m => Text -> m Day
+parseDay :: (MonadFail m) => Text -> m Day
 parseDay = parseTimeM True defaultTimeLocale "%Y-%m-%d" . T.unpack
 
 -- | Format a date in YYYY-MM-DD format.
 formatDay :: Day -> Text
-formatDay = T.pack . formatTime defaultTimeLocale "%Y-%m-%d" 
+formatDay = T.pack . formatTime defaultTimeLocale "%Y-%m-%d"
 
 -- | A dummy date.
 epochDay :: Day
 epochDay = fromGregorian 1970 01 01
 
 -- | Parse a UUID.
-parseUuid :: MonadFail m => Text -> m UUID
+parseUuid :: (MonadFail m) => Text -> m UUID
 parseUuid s =
   case UUID.fromText s of
     Just uuid -> pure uuid
-    Nothing   -> fail $ "invalid uuid: " ++ T.unpack s
+    Nothing -> fail $ "invalid uuid: " ++ T.unpack s
 
 -- | URI-escape a given 'PagePath'.
 escapeAbsPath :: Path Abs t -> Text
 escapeAbsPath path =
-    let segments = drop 1 (FilePath.splitDirectories (toFilePath path)) in
-    "/" <> T.intercalate "/" (map escapeSegment segments)
+  let segments = drop 1 (FilePath.splitDirectories (toFilePath path))
+   in "/" <> T.intercalate "/" (map escapeSegment segments)
   where
     escapeSegment = T.pack . escapeURIString isUnescapedInURIComponent
 
 -- | Convert a URI to a string.
-uriString :: URI -> String 
+uriString :: URI -> String
 uriString x = uriToString id x ""
 
 -- | Convert a URI to text.
@@ -100,24 +99,22 @@ uriText = T.pack . uriString
 -- | Generate the fully-qualified URI to a given page.
 -- todo: use relativeTo?
 qualifyWith :: URI -> Path Abs t -> URI
-qualifyWith base path = base { uriPath = T.unpack (escapeAbsPath path) }
-
+qualifyWith base path = base {uriPath = T.unpack (escapeAbsPath path)}
 
 -- Post Front-matter
 -----------------------------------------------------------------------
 
 -- | Post front-matter.
 data PostMeta = PostMeta
-  { postTitle :: Text
-    -- ^ The title of the post.
-  , postSummary :: Maybe Text
-    -- ^ Summary of the article contents. Optional.
-  , postDate :: Day
-    -- ^ The day the article was published.
-  , postUpdated :: Maybe Day
-    -- ^ The date of the most recent update.
-  , postUuid :: Maybe UUID
-    -- ^ Every post has a unique identifier. This identifier is permanent.
+  { -- | The title of the post.
+    postTitle :: Text,
+    -- | Summary of the article contents. Optional.
+    postSummary :: Maybe Text,
+    -- | The day the article was published.
+    postDate :: Day,
+    -- | The date of the most recent update.
+    postUpdated :: Maybe Day,
+    -- | Every post has a unique identifier. This identifier is permanent.
     -- It's used to identify the post in Atom feeds, and allows us to
     -- identify posts even if the title, url, or contents change.
     --
@@ -126,22 +123,24 @@ data PostMeta = PostMeta
     -- the global Atom feed id. If the title needs to be updated for a
     -- published article, then the generated Uuid *must* be copied into
     -- the post's metadata in order to preserve it.
+    postUuid :: Maybe UUID
   }
 
 -- | Parse a post's front-matter.
-parsePostMeta :: MonadFail m => Pandoc -> m PostMeta
+parsePostMeta :: (MonadFail m) => Pandoc -> m PostMeta
 parsePostMeta (Pandoc meta _) = do
-    title   <- pure $ field "title"
-    summary <- pure $ field "summary"
-    date    <- mapM parseDay (field "date")
-    updated <- mapM parseDay (field "updated")
-    uuid    <- mapM parseUuid (field "uuid")
-    pure $ PostMeta 
-      { postTitle   = title `orElse` "Untitled"
-      , postSummary = summary
-      , postDate    = date `orElse` epochDay
-      , postUpdated = updated
-      , postUuid    = uuid
+  title <- pure $ field "title"
+  summary <- pure $ field "summary"
+  date <- mapM parseDay (field "date")
+  updated <- mapM parseDay (field "updated")
+  uuid <- mapM parseUuid (field "uuid")
+  pure $
+    PostMeta
+      { postTitle = title `orElse` "Untitled",
+        postSummary = summary,
+        postDate = date `orElse` epochDay,
+        postUpdated = updated,
+        postUuid = uuid
       }
   where
     -- todo: make sure that meta value is plain text.
@@ -156,19 +155,18 @@ parsePostMeta (Pandoc meta _) = do
 lastUpdate :: PostMeta -> Day
 lastUpdate meta = fromMaybe (postDate meta) (postUpdated meta)
 
-
 -- Atom Feed
 -----------------------------------------------------------------------
 
 -- | The global atom feed id.
 atomFeedId :: UUID
-atomFeedId = 
-  let bytes = map (fromIntegral . fromEnum) (T.unpack siteName) in
-  UUIDV5.generateNamed UUIDV5.namespaceDNS bytes
+atomFeedId =
+  let bytes = map (fromIntegral . fromEnum) (T.unpack siteName)
+   in UUIDV5.generateNamed UUIDV5.namespaceDNS bytes
 
 -- | The atom id for a given post.
 atomEntryId :: PostMeta -> UUID
-atomEntryId meta = 
+atomEntryId meta =
   case postUuid meta of
     Just uuid -> uuid
     Nothing -> UUIDV5.generateNamed atomFeedId bytes
@@ -176,54 +174,57 @@ atomEntryId meta =
     -- Hash is calculated deterministically from the date and title.
     -- If either are updated, the original UUID needs to be preserved
     -- in the post front-matter.
-    bytes = map (fromIntegral . fromEnum) $
-      T.unpack $ formatDay (postDate meta) <> postTitle meta
+    bytes =
+      map (fromIntegral . fromEnum) $
+        T.unpack $
+          formatDay (postDate meta) <> postTitle meta
 
 atomFeed :: [PostMeta] -> Feed
-atomFeed posts = Feed
-    { feedId = "urn:uuid:" <> UUID.toText atomFeedId
-    , feedTitle = TextString siteName
-    , feedUpdated = formatDay mostRecentUpdate
-    , feedAuthors = []
-    , feedCategories = []
-    , feedContributors = []
-    , feedGenerator = Nothing
-    , feedIcon = Nothing
-    , feedLinks = []
-    , feedLogo = Nothing
-    , feedRights = Nothing
-    , feedSubtitle = Nothing
-    , feedEntries = map atomPostEntry posts
-    , feedAttrs = []
-    , feedOther = []
+atomFeed posts =
+  Feed
+    { feedId = "urn:uuid:" <> UUID.toText atomFeedId,
+      feedTitle = TextString siteName,
+      feedUpdated = formatDay mostRecentUpdate,
+      feedAuthors = [],
+      feedCategories = [],
+      feedContributors = [],
+      feedGenerator = Nothing,
+      feedIcon = Nothing,
+      feedLinks = [],
+      feedLogo = Nothing,
+      feedRights = Nothing,
+      feedSubtitle = Nothing,
+      feedEntries = map atomPostEntry posts,
+      feedAttrs = [],
+      feedOther = []
     }
   where
     mostRecentUpdate :: Day
-    mostRecentUpdate = 
+    mostRecentUpdate =
       case sortOn Down $ map lastUpdate posts of
         day : _ -> day
-        []      -> epochDay  -- No posts; use dummy 1970-01-01.
+        [] -> epochDay -- No posts; use dummy 1970-01-01.
 
 atomPostEntry :: PostMeta -> Entry
-atomPostEntry meta = Entry
-  { entryId = "urn:uuid:" <> UUID.toText (atomEntryId meta)
-  , entryTitle = TextString $ postTitle meta
-  , entryUpdated = formatDay (lastUpdate meta)
-  , entryAuthors = []
-  , entryCategories = []
-  , entryContent = Nothing
-  , entryContributor = []
-  , entryLinks = []
-  , entryPublished = Just $ formatDay (postDate meta)
-  , entryRights = Nothing
-  , entrySource = Nothing
-  , entrySummary = TextString <$> postSummary meta
-  , entryInReplyTo = Nothing
-  , entryInReplyTotal = Nothing
-  , entryAttrs = []
-  , entryOther = []
-  }
-
+atomPostEntry meta =
+  Entry
+    { entryId = "urn:uuid:" <> UUID.toText (atomEntryId meta),
+      entryTitle = TextString $ postTitle meta,
+      entryUpdated = formatDay (lastUpdate meta),
+      entryAuthors = [],
+      entryCategories = [],
+      entryContent = Nothing,
+      entryContributor = [],
+      entryLinks = [],
+      entryPublished = Just $ formatDay (postDate meta),
+      entryRights = Nothing,
+      entrySource = Nothing,
+      entrySummary = TextString <$> postSummary meta,
+      entryInReplyTo = Nothing,
+      entryInReplyTotal = Nothing,
+      entryAttrs = [],
+      entryOther = []
+    }
 
 -- Sitemap
 -----------------------------------------------------------------------
@@ -234,12 +235,13 @@ dayToUTCTime day = UTCTime day 0
 
 -- | The sitemap entry for a given page.
 sitemapUrl :: URI -> Maybe Day -> SitemapUrl
-sitemapUrl target updated = SitemapUrl
-  { sitemapLocation = uriText target
-  , sitemapLastModified = dayToUTCTime <$> updated
-  , sitemapChangeFrequency = Nothing
-  , sitemapPriority = Nothing
-  }
+sitemapUrl target updated =
+  SitemapUrl
+    { sitemapLocation = uriText target,
+      sitemapLastModified = dayToUTCTime <$> updated,
+      sitemapChangeFrequency = Nothing,
+      sitemapPriority = Nothing
+    }
 
 -- | The sitemap entry for a given post.
 sitemapPostUrl :: (Path Rel File, PostMeta) -> Action SitemapUrl
@@ -254,7 +256,6 @@ sitemap posts = do
   let homeUrl = sitemapUrl (qualifyWith baseUri [absfile|/index.html|]) Nothing
   pure $ Sitemap (homeUrl : postUrls)
 
-
 -- Actions
 -----------------------------------------------------------------------
 
@@ -268,23 +269,26 @@ runPandoc m = do
 -- | Read and parse a markdown file.
 readMarkdown :: Path a File -> Action Pandoc
 readMarkdown path = do
-    contents <- readFile' (toFilePath path)
-    runPandoc $ Pandoc.readMarkdown readerOptions (T.pack contents)
+  contents <- readFile' (toFilePath path)
+  runPandoc $ Pandoc.readMarkdown readerOptions (T.pack contents)
   where
     readerOptions :: Pandoc.ReaderOptions
-    readerOptions = Pandoc.def
-      { Pandoc.readerExtensions = 
-          -- Enable extension to read yaml front-matter.
-          enableExtension Pandoc.Ext_yaml_metadata_block pandocExtensions
-      }
+    readerOptions =
+      Pandoc.def
+        { Pandoc.readerExtensions =
+            -- Enable extension to read yaml front-matter.
+            enableExtension Pandoc.Ext_yaml_metadata_block pandocExtensions
+        }
 
 -- | Convert a pandoc document to an html string.
 documentHtml :: Pandoc -> Action Text
 documentHtml doc = runPandoc $ Pandoc.writeHtml5String writerOptions doc
   where
     writerOptions :: Pandoc.WriterOptions
-    writerOptions = Pandoc.def
-      { Pandoc.writerHighlightStyle = Just pygments }
+    writerOptions =
+      Pandoc.def
+        { Pandoc.writerHighlightStyle = Just pygments
+        }
 
 -- | Read and parse the front-matter of a post.
 readPostMeta :: Path a File -> Action PostMeta
@@ -307,8 +311,8 @@ readLinks path = do
 -- | Write a page's tracked internal links to a file.
 writeLinks :: FilePath -> Set (Path Abs File) -> Action ()
 writeLinks out links = writeFile' out content
-  where content = unlines (map toFilePath (Set.toList links))
-
+  where
+    content = unlines (map toFilePath (Set.toList links))
 
 -- HTML Builders
 -----------------------------------------------------------------------
@@ -317,10 +321,10 @@ writeLinks out links = writeFile' out content
 type Builder = HtmlT (StateT BuildState Action)
 
 data BuildState = BuildState
-  { pagePath :: Path Abs File 
-    -- ^ The target location of the page we're building.
-  , pageInternalLinks :: Set (Path Abs File)
-    -- ^ Collected set of links to internal pages.
+  { -- | The target location of the page we're building.
+    pagePath :: Path Abs File,
+    -- | Collected set of links to internal pages.
+    pageInternalLinks :: Set (Path Abs File)
   }
 
 -- | Run a shake action in a builder.
@@ -342,7 +346,7 @@ getPageUri = qualifyWith baseUri <$> getPagePath
 -- | Track a link to an internal page.
 trackInternalLink :: Path Abs File -> Builder ()
 trackInternalLink f = lift $ modify $ \s ->
-  s { pageInternalLinks = Set.insert f (pageInternalLinks s) }
+  s {pageInternalLinks = Set.insert f (pageInternalLinks s)}
 
 -- | Resolve an internal link inside a document, relative to a given
 -- directory in the site.
@@ -353,13 +357,13 @@ trackInternalLink f = lift $ modify $ \s ->
 -- Just "/posts/other.html"
 resolveInternalLink :: Path Abs Dir -> Text -> Maybe (Path Abs File)
 resolveInternalLink base link = do
-    p <- resolvedPath
-    case fileExtension p of
-      -- todo: should probably be a little more careful about matching the
-      -- shake rules, so that we transform file extensions in the right
-      -- places (e.g. restrict '.md' -> '.html' to '/posts', not '/static').
-      Just ".md" -> p -<.> ".html"
-      _ -> Just p
+  p <- resolvedPath
+  case fileExtension p of
+    -- todo: should probably be a little more careful about matching the
+    -- shake rules, so that we transform file extensions in the right
+    -- places (e.g. restrict '.md' -> '.html' to '/posts', not '/static').
+    Just ".md" -> p -<.> ".html"
+    _ -> Just p
   where
     resolvedPath :: Maybe (Path Abs File)
     resolvedPath =
@@ -369,7 +373,7 @@ resolveInternalLink base link = do
         Nothing -> Nothing
 
 -- | Rewrite all links in a Pandoc document monadically.
-rewriteLinksM :: Monad m => (Text -> m Text) -> Pandoc -> m Pandoc
+rewriteLinksM :: (Monad m) => (Text -> m Text) -> Pandoc -> m Pandoc
 rewriteLinksM f = walkM $ \case
   Link attr content (url, title) -> do
     url' <- f url
@@ -390,7 +394,7 @@ processDocumentLinks = rewriteLinksM resolve
         Just internal -> do
           trackInternalLink internal
           withRelative internal pure
-        Nothing -> pure link  -- external link, leave untouched.
+        Nothing -> pure link -- external link, leave untouched.
 
 -- | Calculate the path relative to the current page.
 withRelative :: Path Abs File -> (Text -> Builder a) -> Builder a
@@ -407,7 +411,6 @@ runBuilder out builder = do
   writeFile' (toFilePath out) (TL.unpack content)
   pure st
 
-
 -- Base HTML
 
 -- | Build a @<title>@.
@@ -420,11 +423,11 @@ buildBaseHead :: Builder ()
 buildBaseHead = do
   meta_ [charset_ "UTF-8"]
   meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1.0"]
-  withRelative [absfile|/favicon.ico|] $ \path -> 
+  withRelative [absfile|/favicon.ico|] $ \path ->
     link_ [rel_ "icon", type_ "image/x-icon", href_ path]
-  withRelative [absfile|/static/fonts.css|] $ \path -> 
+  withRelative [absfile|/static/fonts.css|] $ \path ->
     link_ [rel_ "stylesheet", href_ path]
-  withRelative [absfile|/static/style.css|] $ \path -> 
+  withRelative [absfile|/static/style.css|] $ \path ->
     link_ [rel_ "stylesheet", href_ path]
 
 -- | Build the base @<header>@ and @<nav>@.
@@ -433,9 +436,9 @@ buildBaseHeader = do
   header_ [class_ "main"] $ do
     nav_ $ do
       ul_ $ do
-        li_ $ withRelative [absfile|/index.html|] $ \path -> 
+        li_ $ withRelative [absfile|/index.html|] $ \path ->
           a_ [href_ path] "Home"
-        li_ $ withRelative [absfile|/atom.xml|] $ \path -> 
+        li_ $ withRelative [absfile|/atom.xml|] $ \path ->
           a_ [href_ path] "Feed"
         li_ $ a_ [href_ "https://github.com/jtmcx"] "GitHub"
     span_ [class_ "mark"] (toHtml siteName)
@@ -446,26 +449,30 @@ buildBaseFooter = do
   footer_ [class_ "main"] $ do
     span_ $ toHtmlRaw ("&copy; 2026 jtm" :: String)
     span_ $ do
-      "Website "; a_ [href_ "https://github.com/jtmcx/blog"] "source"; " licensed under "
-      a_ [href_ "https://github.com/jtmcx/blog/tree/master/LICENSE"] "ISC"; "."
+      "Website "
+      a_ [href_ "https://github.com/jtmcx/blog"] "source"
+      " licensed under "
+      a_ [href_ "https://github.com/jtmcx/blog/tree/master/LICENSE"] "ISC"
+      "."
     span_ $ do
       "Content licensed under "
-      a_ [href_ "https://creativecommons.org/licenses/by-sa/4.0/"] "CC-BY-SA"; "."
+      a_ [href_ "https://creativecommons.org/licenses/by-sa/4.0/"] "CC-BY-SA"
+      "."
 
 -- Post HTML
 
 -- | Build OpenGraph metadata for this post. See https://ogp.me/
 buildPostMeta :: PostMeta -> Builder ()
 buildPostMeta meta = do
-    prop "og:site_name" siteName
-    prop "og:type" "article"
-    prop "og:title" (postTitle meta)
-    prop "og:description" `mapM_` postSummary meta
-    prop "og:url" . uriText =<< getPageUri
-    prop "article:published_time" $ formatDay (postDate meta)
+  prop "og:site_name" siteName
+  prop "og:type" "article"
+  prop "og:title" (postTitle meta)
+  prop "og:description" `mapM_` postSummary meta
+  prop "og:url" . uriText =<< getPageUri
+  prop "article:published_time" $ formatDay (postDate meta)
   where
     -- https://github.com/chrisdone/lucid/pull/168
-    -- | The @property@ attribute.
+    -- \| The @property@ attribute.
     property_ :: Text -> Attributes
     property_ = makeAttributes "property"
 
@@ -474,17 +481,17 @@ buildPostMeta meta = do
 
 -- | Build the article @<header>@.
 buildPostHeader :: PostMeta -> Builder ()
-buildPostHeader meta = 
+buildPostHeader meta =
   header_ $ do
     p_ [class_ "meta"] (toHtml $ "Published · " ++ date)
     h1_ [class_ "title"] (toHtml $ postTitle meta)
   where
-    date :: String 
+    date :: String
     date = formatTime defaultTimeLocale "%b %d %Y" (postDate meta)
 
 buildPost :: Pandoc -> Builder ()
 buildPost unprocessedDoc = do
-  doc <- processDocumentLinks unprocessedDoc 
+  doc <- processDocumentLinks unprocessedDoc
   meta <- action $ parsePostMeta doc
   doctypehtml_ $ do
     head_ $ do
@@ -513,7 +520,7 @@ buildAvatar = do
 -- | Construct the home page bio.
 buildHomeBio :: Builder ()
 buildHomeBio = do
-  bio <- action $ readMarkdown [relfile|partials/bio.md|] >>= documentHtml 
+  bio <- action $ readMarkdown [relfile|partials/bio.md|] >>= documentHtml
   div_ [class_ "bio"] $ toHtmlRaw bio
 
 -- | Construct the list of blog entries on the home page.
@@ -523,9 +530,9 @@ buildPostList = do
   section_ $ do
     h2_ "Posts"
     case posts of
-      [] -> 
+      [] ->
         p_ [class_ "empty-post-list"] "(Nothing here yet!)"
-      _  -> do
+      _ -> do
         ul_ [class_ "post-list"] $ do
           let sorted = sortOn (Down . postDate . snd) posts
           mconcat $ map (uncurry buildPostListEntry) sorted
@@ -549,18 +556,17 @@ buildHome = do
   doctypehtml_ $ do
     head_ $ do
       buildTitle "Home"
-      buildBaseHead 
+      buildBaseHead
       withRelative [absfile|/static/home.css|] $ \path ->
         link_ [rel_ "stylesheet", href_ path]
     body_ $ do
-      buildBaseHeader 
+      buildBaseHeader
       main_ $ do
         div_ [class_ "about"] $ do
           buildAvatar
           buildHomeBio
         buildPostList
       buildBaseFooter
-
 
 -- Shake rules
 -----------------------------------------------------------------------
@@ -575,7 +581,7 @@ p </?> q = (toFilePath p) FilePath.</> q
 postAssetPattern :: FilePath -> Bool
 postAssetPattern out =
   (htmlDir </?> "posts//*") ?== out
-  && FilePath.takeExtension out /= ".html"
+    && FilePath.takeExtension out /= ".html"
 
 main :: IO ()
 main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
@@ -605,8 +611,9 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
     need $ map toFilePath targets
 
   [ htmlDir </?> "index.html",
-    linksDir </?> "index.html.links" ] &%>
-    \case 
+    linksDir </?> "index.html.links"
+    ]
+    &%> \case
       [htmlOut, linksOut] -> do
         out <- parseRelFile htmlOut
         st <- runBuilder out buildHome
@@ -615,9 +622,10 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
         putInfo $ "Generated " ++ linksOut
       _ -> undefined
 
-  [ htmlDir </?> "posts/*.html", 
-    linksDir </?> "posts/*.html.links"] &%> 
-    \case
+  [ htmlDir </?> "posts/*.html",
+    linksDir </?> "posts/*.html.links"
+    ]
+    &%> \case
       [htmlOut, linksOut] -> do
         out <- parseRelFile htmlOut
         src <- out -<.> ".md" >>= stripProperPrefix htmlDir
@@ -627,7 +635,6 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
         writeLinks linksOut (pageInternalLinks st)
         putInfo $ "Generated " ++ linksOut
       _ -> undefined
-
 
   htmlDir </?> "atom.xml" %> \out -> do
     posts <- readAllPostMetas
