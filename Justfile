@@ -2,13 +2,13 @@
 default:
     @just --list
 
-# Build the ssg executable
+# Build the site executable
 build:
     cabal build
 
 # Generate the site
 site *args: build
-    cabal run ssg -- {{args}}
+    cabal run site -- {{args}}
 
 # Remove generated site output and Shake's build database
 clean:

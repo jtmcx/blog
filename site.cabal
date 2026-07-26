@@ -1,9 +1,9 @@
 cabal-version:      2.4
-name:               ssg
+name:               site
 version:            0.1.0.0
 build-type:         Simple
 
-executable ssg
+executable site
     main-is:          Main.hs
     hs-source-dirs:   app
     other-modules:    Main.Path

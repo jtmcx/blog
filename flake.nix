@@ -12,13 +12,13 @@
         pkgs = import nixpkgs { inherit system; };
         haskellPackages = pkgs.haskellPackages;
 
-        ssg = haskellPackages.callCabal2nix "ssg" ./. { };
+        site = haskellPackages.callCabal2nix "site" ./. { };
       in
       {
-        packages.default = ssg;
+        packages.default = site;
 
         devShells.default = haskellPackages.shellFor {
-          packages = _: [ ssg ];
+          packages = _: [ site ];
           nativeBuildInputs = [
             haskellPackages.cabal-install
             haskellPackages.haskell-language-server
