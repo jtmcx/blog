@@ -32,7 +32,7 @@ import Text.Pandoc.Class (PandocPure, runPure)
 import Text.Pandoc.Definition (Inline (..), Pandoc (..), lookupMeta)
 import Text.Pandoc.Highlighting (pygments)
 import Text.Pandoc.Shared (stringify)
-import Text.Pandoc.Walk (query, walk, walkM)
+import Text.Pandoc.Walk (walkM)
 import Web.Sitemap.Gen (Sitemap (..), SitemapUrl (..), renderSitemap)
 
 -- Configuration
