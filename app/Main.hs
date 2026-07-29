@@ -438,7 +438,7 @@ buildBaseHeader = do
       ul_ $ do
         li_ $ withRelative [absfile|/index.html|] $ \path ->
           a_ [href_ path] "Home"
-        li_ $ withRelative [absfile|/atom.xml|] $ \path ->
+        li_ $ withRelative [absfile|/feed.atom|] $ \path ->
           a_ [href_ path] "Feed"
         li_ $ a_ [href_ "https://github.com/jtmcx"] "GitHub"
     span_ [class_ "mark"] (toHtml siteName)
@@ -589,7 +589,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
 
   phony "all" $ do
     need [htmlDir </?> "index.html"]
-    need [htmlDir </?> "atom.xml"]
+    need [htmlDir </?> "feed.atom"]
     need [htmlDir </?> "sitemap.xml"]
     need [htmlDir </?> "favicon.ico"]
 
@@ -636,7 +636,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
         putInfo $ "Generated " ++ linksOut
       _ -> undefined
 
-  htmlDir </?> "atom.xml" %> \out -> do
+  htmlDir </?> "feed.atom" %> \out -> do
     posts <- readAllPostMetas
     case Atom.textFeed (atomFeed (map snd posts)) of
       Just xml -> do
