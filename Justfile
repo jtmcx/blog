@@ -35,8 +35,11 @@ doc:
 repl:
     cabal repl
 
-# Archive the generated site.
-tar: site
+# Disable MacOS extended attributes in tarballs.
+export COPYFILE_DISABLE := "1"
+
+# Generate site tarball
+tar:
     tar zcf html.tgz -C _site/html .
 
 

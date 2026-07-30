@@ -281,8 +281,8 @@ readMarkdown path = do
         }
 
 -- | Convert a pandoc document to an html string.
-documentHtml :: Pandoc -> Action Text
-documentHtml doc = runPandoc $ Pandoc.writeHtml5String writerOptions doc
+docToHtml :: Pandoc -> Action Text
+docToHtml doc = runPandoc $ Pandoc.writeHtml5String writerOptions doc
   where
     writerOptions :: Pandoc.WriterOptions
     writerOptions =
@@ -503,7 +503,7 @@ buildPost unprocessedDoc = do
       main_ $ do
         article_ $ do
           buildPostHeader meta
-          (toHtmlRaw =<< action (documentHtml doc))
+          (toHtmlRaw =<< action (docToHtml doc))
       p_ [class_ "back-to-top"] $
         a_ [href_ "#"] "↑ Back to top ↑"
       buildBaseFooter
@@ -520,7 +520,7 @@ buildAvatar = do
 -- | Construct the home page bio.
 buildHomeBio :: Builder ()
 buildHomeBio = do
-  bio <- action $ readMarkdown [relfile|partials/bio.md|] >>= documentHtml
+  bio <- action $ readMarkdown [relfile|partials/bio.md|] >>= docToHtml
   div_ [class_ "bio"] $ toHtmlRaw bio
 
 -- | Construct the list of blog entries on the home page.
@@ -528,7 +528,7 @@ buildPostList :: Builder ()
 buildPostList = do
   posts <- action readAllPostMetas
   section_ $ do
-    h2_ "Posts"
+    h2_ "Recent Posts"
     case posts of
       [] ->
         p_ [class_ "empty-post-list"] "(Nothing here yet!)"
@@ -536,6 +536,13 @@ buildPostList = do
         ul_ [class_ "post-list"] $ do
           let sorted = sortOn (Down . postDate . snd) posts
           mconcat $ map (uncurry buildPostListEntry) sorted
+
+-- | Construct the list of blog entries on the home page.
+buildProjectList :: Builder ()
+buildProjectList = do
+  h2_ "Selected Personal Projects"
+  html <- action $ readMarkdown [relfile|partials/projects.md|] >>= docToHtml
+  div_ [class_ "projects"] $ toHtmlRaw html
 
 -- | Construct an individual blog entry on the home page.
 buildPostListEntry :: Path Rel File -> PostMeta -> Builder ()
@@ -566,6 +573,7 @@ buildHome = do
           buildAvatar
           buildHomeBio
         buildPostList
+        buildProjectList
       buildBaseFooter
 
 -- Shake rules
