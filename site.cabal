@@ -25,7 +25,6 @@ executable site
                     , text
                     , time
                     , transformers
-                    , uuid
     default-extensions: OverloadedStrings
                        , QuasiQuotes
                        , LambdaCase

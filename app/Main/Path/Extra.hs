@@ -2,6 +2,7 @@ module Main.Path.Extra
   ( dot
   , root
   , (-<.>)
+  , (-<.>!)
   , (</$>)
   , (<$/>)
   , maybeParent
@@ -11,6 +12,8 @@ module Main.Path.Extra
 
 import Main.Path 
 import System.FilePath ( splitDirectories, joinPath )
+import Data.Maybe (fromMaybe)
+import GHC.Stack (HasCallStack)
 
 -- | The root directory @/@.
 root :: Path Abs Dir
@@ -23,6 +26,14 @@ dot = [reldir|.|]
 -- | Replace the extension for a given file.
 (-<.>) :: MonadFail m => Path a File -> String -> m (Path a File)
 (-<.>) = flip replaceExtension
+
+-- | Replace the extension for a given file. Abort on error.
+(-<.>!) :: Path a File -> String -> Path a File
+p -<.>! ext = fromMaybe abort (p -<.> ext)
+  where
+    abort :: HasCallStack => a
+    abort = error $ "internal error: failed to replace extension in " 
+      ++ "path " ++ toFilePath p ++ " with " ++ ext
 
 -- | Join two paths @p </$ q@, where 'q' might fail.
 (</$>) :: MonadFail m => Path a Dir -> m (Path Rel t) -> m (Path a t)

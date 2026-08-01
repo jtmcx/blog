@@ -13,9 +13,6 @@ import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Time (Day, UTCTime (..), fromGregorian)
 import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
-import Data.UUID (UUID)
-import qualified Data.UUID as UUID
-import qualified Data.UUID.V5 as UUIDV5
 import Development.Shake hiding (action)
 import qualified Development.Shake.FilePath as FilePath
 import Lucid
@@ -26,6 +23,7 @@ import Network.URI (URI (..), escapeURIString, isUnreserved, nullURI, parseURIRe
 import qualified Network.URI as URI
 import Network.URI.Static (uri)
 import Text.Atom.Feed (Entry (..), Feed (..), TextContent (..))
+import qualified Text.Atom.Feed as Atom
 import qualified Text.Atom.Feed.Export as Atom
 import Text.Pandoc (enableExtension, pandocExtensions)
 import qualified Text.Pandoc as Pandoc
@@ -73,13 +71,6 @@ formatDay = T.pack . formatTime defaultTimeLocale "%Y-%m-%d"
 -- | A dummy date.
 epochDay :: Day
 epochDay = fromGregorian 1970 01 01
-
--- | Parse a UUID.
-parseUuid :: (MonadFail m) => Text -> m UUID
-parseUuid s =
-  case UUID.fromText s of
-    Just uuid -> pure uuid
-    Nothing -> fail $ "invalid uuid: " ++ T.unpack s
 
 -- | Convert a URI to a string.
 uriString :: URI -> String
@@ -162,72 +153,39 @@ lastUpdate meta = fromMaybe (postDate meta) (postUpdated meta)
 -- Atom Feed
 -----------------------------------------------------------------------
 
--- | The global atom feed id.
-atomFeedId :: UUID
-atomFeedId =
-  let bytes = map (fromIntegral . fromEnum) (T.unpack siteName)
-   in UUIDV5.generateNamed UUIDV5.namespaceDNS bytes
+-- | An empty Atom feed.
+emptyFeed :: Feed
+emptyFeed = Atom.nullFeed "" (TextString "") ""
 
--- | The atom id for a given post.
-atomEntryId :: PostMeta -> UUID
-atomEntryId meta =
-  case postUuid meta of
-    Just uuid -> uuid
-    Nothing -> UUIDV5.generateNamed atomFeedId bytes
-  where
-    -- Hash is calculated deterministically from the date and title.
-    -- If either are updated, the original UUID needs to be preserved
-    -- in the post front-matter.
-    bytes =
-      map (fromIntegral . fromEnum) $
-        T.unpack $
-          formatDay (postDate meta) <> postTitle meta
+-- | An empty Atom feed entry.
+emptyEntry :: Entry
+emptyEntry = Atom.nullEntry "" (TextString "") ""
 
-atomFeed :: [PostMeta] -> Feed
+-- | Contruct an Atom feed from a list of posts.
+atomFeed :: [(Path Rel File, PostMeta)] -> Feed
 atomFeed posts =
-  Feed
-    { feedId = "urn:uuid:" <> UUID.toText atomFeedId,
+  emptyFeed
+    { feedId = uriText $ permalink [absdir|/posts|],
       feedTitle = TextString siteName,
       feedUpdated = formatDay mostRecentUpdate,
-      feedAuthors = [],
-      feedCategories = [],
-      feedContributors = [],
-      feedGenerator = Nothing,
-      feedIcon = Nothing,
-      feedLinks = [],
-      feedLogo = Nothing,
-      feedRights = Nothing,
-      feedSubtitle = Nothing,
-      feedEntries = map atomPostEntry posts,
-      feedAttrs = [],
-      feedOther = []
+      feedEntries = map (uncurry atomPostEntry) posts
     }
   where
     mostRecentUpdate :: Day
     mostRecentUpdate =
-      case sortOn Down $ map lastUpdate posts of
+      case sortOn Down $ map (lastUpdate . snd) posts of
         day : _ -> day
         [] -> epochDay -- No posts; use dummy 1970-01-01.
 
-atomPostEntry :: PostMeta -> Entry
-atomPostEntry meta =
-  Entry
-    { entryId = "urn:uuid:" <> UUID.toText (atomEntryId meta),
-      entryTitle = TextString $ postTitle meta,
+-- | Contruct an Atom feed entry for a given post.
+atomPostEntry :: Path Rel File -> PostMeta -> Entry
+atomPostEntry src meta =
+  emptyEntry
+    { entryId = uriText $ permalink (asAbsolute (src -<.>! ".html")),
+      entryTitle = TextString (postTitle meta),
       entryUpdated = formatDay (lastUpdate meta),
-      entryAuthors = [],
-      entryCategories = [],
-      entryContent = Nothing,
-      entryContributor = [],
-      entryLinks = [],
       entryPublished = Just $ formatDay (postDate meta),
-      entryRights = Nothing,
-      entrySource = Nothing,
-      entrySummary = TextString <$> postSummary meta,
-      entryInReplyTo = Nothing,
-      entryInReplyTotal = Nothing,
-      entryAttrs = [],
-      entryOther = []
+      entrySummary = TextString <$> postSummary meta
     }
 
 -- Sitemap
@@ -237,34 +195,28 @@ atomPostEntry meta =
 dayToUTCTime :: Day -> UTCTime
 dayToUTCTime day = UTCTime day 0
 
--- | The sitemap entry for the home page.
-sitemapHomeEntry :: SitemapUrl
-sitemapHomeEntry =
-  SitemapUrl
-    { sitemapLocation = uriText $ permalink [absfile|/index.html|],
-      sitemapLastModified = Nothing,
-      sitemapChangeFrequency = Nothing,
-      sitemapPriority = Nothing
-    }
-
--- | The sitemap entry for a given post.
-sitemapPostEntry :: Path Rel File -> PostMeta -> Action SitemapUrl
-sitemapPostEntry src meta = do
-  path <- root </$> (src -<.> ".html")
-  pure $
-    SitemapUrl
-      { sitemapLocation = uriText (permalink path),
-        sitemapLastModified = Just $ dayToUTCTime (lastUpdate meta),
-        sitemapChangeFrequency = Nothing,
-        sitemapPriority = Nothing
-      }
-
 -- | The full sitemap for the home page and all posts.
-sitemap :: Action Sitemap
-sitemap = do
-  let home = sitemapHomeEntry
-  posts <- readAllPostMetas >>= mapM (uncurry sitemapPostEntry)
-  pure $ Sitemap (home : posts)
+sitemap :: [(Path Rel File, PostMeta)] -> Sitemap
+sitemap posts = do
+  Sitemap (homeEntry : map (uncurry postEntry) posts)
+  where
+    homeEntry :: SitemapUrl
+    homeEntry =
+      SitemapUrl
+        { sitemapLocation = uriText $ permalink [absfile|/index.html|],
+          sitemapLastModified = Nothing,
+          sitemapChangeFrequency = Nothing,
+          sitemapPriority = Nothing
+        }
+
+    postEntry :: Path Rel File -> PostMeta -> SitemapUrl
+    postEntry src meta =
+      SitemapUrl
+        { sitemapLocation = uriText $ permalink (asAbsolute (src -<.>! ".html")),
+          sitemapLastModified = Just $ dayToUTCTime (lastUpdate meta),
+          sitemapChangeFrequency = Nothing,
+          sitemapPriority = Nothing
+        }
 
 -- Actions
 -----------------------------------------------------------------------
@@ -307,7 +259,7 @@ readPostMeta path = readMarkdown path >>= parsePostMeta
 -- | Read and parse the front-matter for all posts.
 readAllPostMetas :: Action [(Path Rel File, PostMeta)]
 readAllPostMetas = do
-  posts <- getDirectoryFiles "" ["posts/*.md"] >>= mapM parseRelFile
+  posts <- getDirectoryFilesP "" ["posts/*.md"]
   need $ map toFilePath posts
   zip posts <$> mapM readPostMeta posts
 
@@ -383,6 +335,17 @@ resolveSiteFile cwd url = do
     p@('/' : _) -> parseAbsFile p
     p -> resolveAgainst cwd p
 
+-- | Rewrite all links in a Pandoc document monadically.
+rewriteLinksM :: (Monad m) => (Text -> m Text) -> Pandoc -> m Pandoc
+rewriteLinksM f = walkM $ \case
+  Link attr content (url, title) -> do
+    url' <- f url
+    pure (Link attr content (url', title))
+  Image attr content (url, title) -> do
+    url' <- f url
+    pure (Image attr content (url', title))
+  inline -> pure inline
+
 -- | Resolve an internal link inside a document, relative to a given
 -- working directory.
 --
@@ -397,17 +360,6 @@ resolveDocumentLink cwd url = do
     -- places (e.g. restrict '.md' -> '.html' to '/posts', not '/static').
     Just ".md" -> p -<.> ".html"
     _ -> Just p
-
--- | Rewrite all links in a Pandoc document monadically.
-rewriteLinksM :: (Monad m) => (Text -> m Text) -> Pandoc -> m Pandoc
-rewriteLinksM f = walkM $ \case
-  Link attr content (url, title) -> do
-    url' <- f url
-    pure (Link attr content (url', title))
-  Image attr content (url, title) -> do
-    url' <- f url
-    pure (Image attr content (url', title))
-  inline -> pure inline
 
 -- | Make all internal links relative and track them.
 processDocumentLinks :: Pandoc -> Builder Pandoc
@@ -614,34 +566,25 @@ p </?> q = (toFilePath p) FilePath.</> q
 
 -- | Any file in the 'posts' directory that's not an .html file.
 -- These files are copied from posts to _site/posts/ if they're
--- referenced in a document.
+-- referenced within a document.
 postAssetPattern :: FilePath -> Bool
 postAssetPattern out =
   (htmlDir </?> "posts//*") ?== out
     && FilePath.takeExtension out /= ".html"
 
+-- | Same as 'getDirectoryFiles', but return a 'Path' list.
 getDirectoryFilesP :: FilePath -> [FilePattern] -> Action [Path Rel File]
-getDirectoryFilesP base patterns =
-  getDirectoryFiles base patterns >>= mapM parseRelFile
+getDirectoryFilesP dir ps = getDirectoryFiles dir ps >>= mapM parseRelFile
 
--- | Treat a relative path as if it's absolute.
-asAbsolute :: Path Rel t -> Path Abs t
-asAbsolute p = [absdir|/|] </> p
-
--- | Treat an absolute path as if it's relative.
-asRelative :: Path Abs t -> Path Rel t
-asRelative p = fromMaybe undefined $ stripProperPrefix [absdir|/|] p
-
--- | Re-root an absolute path on to a given base directory.
-rootTo :: Path Abs t -> Path b Dir -> Path b t
-rootTo p newRoot = newRoot </> asRelative p
-
+-- | Add a shake dependency on site pages.
 needSiteFiles :: [SitePath t] -> Action ()
 needSiteFiles fs = need $ map (toFilePath . (`rootTo` htmlDir)) fs
 
+-- | Add a shake dependency on a site page.
 needSiteFile :: SitePath File -> Action ()
 needSiteFile f = needSiteFiles [f]
 
+-- | Add dependencies on all internal link references.
 needLinkDependencies :: SitePath File -> Action ()
 needLinkDependencies file = do
   linkFile <- addExtension ".links" (file `rootTo` linksDir)
@@ -699,14 +642,15 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
 
   htmlDir </?> "feed.atom" %> \out -> do
     posts <- readAllPostMetas
-    case Atom.textFeed (atomFeed (map snd posts)) of
+    case Atom.textFeed (atomFeed posts) of
       Just xml -> do
         writeFile' out (TL.unpack xml)
         putInfo $ "Generated " ++ out
       Nothing -> fail "Failed to generate Atom feed"
 
   htmlDir </?> "sitemap.xml" %> \out -> do
-    xml <- decodeUtf8 . renderSitemap <$> sitemap
+    posts <- readAllPostMetas
+    let xml = decodeUtf8 (renderSitemap (sitemap posts))
     writeFile' out (TL.unpack xml)
     putInfo $ "Generated " ++ out
 
