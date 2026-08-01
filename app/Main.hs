@@ -1,9 +1,11 @@
 module Main (main) where
 
+import Control.Monad (guard)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State (StateT (..), gets, modify)
+import Data.Functor (($>))
 import Data.List (sortOn)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Ord (Down (Down))
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -20,7 +22,7 @@ import Lucid
 import Lucid.Base (makeAttributes)
 import Main.Path
 import Main.Path.Extra
-import Network.URI (URI (..), escapeURIString, uriToString, uriIsRelative, isUnreserved, nullURI, parseURIReference, unEscapeString)
+import Network.URI (URI (..), escapeURIString, isUnreserved, nullURI, parseURIReference, unEscapeString, uriIsRelative, uriToString)
 import qualified Network.URI as URI
 import Network.URI.Static (uri)
 import Text.Atom.Feed (Entry (..), Feed (..), TextContent (..))
@@ -33,9 +35,6 @@ import Text.Pandoc.Highlighting (pygments)
 import Text.Pandoc.Shared (stringify)
 import Text.Pandoc.Walk (walkM)
 import Web.Sitemap.Gen (Sitemap (..), SitemapUrl (..), renderSitemap)
-import Control.Monad (guard)
-import Data.Maybe (mapMaybe)
-import Data.Functor (($>))
 
 -- Configuration
 -----------------------------------------------------------------------
@@ -252,12 +251,13 @@ sitemapHomeEntry =
 sitemapPostEntry :: Path Rel File -> PostMeta -> Action SitemapUrl
 sitemapPostEntry src meta = do
   path <- root </$> (src -<.> ".html")
-  pure $ SitemapUrl
-    { sitemapLocation = uriText (permalink path),
-      sitemapLastModified = Just $ dayToUTCTime (lastUpdate meta),
-      sitemapChangeFrequency = Nothing,
-      sitemapPriority = Nothing
-    }
+  pure $
+    SitemapUrl
+      { sitemapLocation = uriText (permalink path),
+        sitemapLastModified = Just $ dayToUTCTime (lastUpdate meta),
+        sitemapChangeFrequency = Nothing,
+        sitemapPriority = Nothing
+      }
 
 -- | The full sitemap for the home page and all posts.
 sitemap :: Action Sitemap
@@ -314,8 +314,8 @@ readAllPostMetas = do
 -- | Read a page's tracked internal links from a file.
 readLinks :: FilePath -> Action [URI]
 readLinks path = do
-    contents <- readFile' path
-    mapM parseLine (lines contents)
+  contents <- readFile' path
+  mapM parseLine (lines contents)
   where
     parseLine :: String -> Action URI
     parseLine x =
@@ -327,7 +327,6 @@ readLinks path = do
 writeLinks :: FilePath -> [URI] -> Action ()
 writeLinks out links =
   writeFile' out $ unlines (map uriString links)
-
 
 -- HTML Builders
 -----------------------------------------------------------------------
@@ -384,7 +383,6 @@ resolveSiteFile cwd url = do
     p@('/' : _) -> parseAbsFile p
     p -> resolveAgainst cwd p
 
-
 -- | Resolve an internal link inside a document, relative to a given
 -- working directory.
 --
@@ -423,7 +421,7 @@ processDocumentLinks = rewriteLinksM (resolve . T.unpack)
           case resolveDocumentLink cwd url of
             Just internal -> withRelative internal pure
             Nothing -> trackLink url $> uriText url
-        Nothing -> 
+        Nothing ->
           action $ fail $ "Failed to parse uri: " ++ text
 
 -- | Calculate the path relative to the current page.
@@ -622,7 +620,6 @@ postAssetPattern out =
   (htmlDir </?> "posts//*") ?== out
     && FilePath.takeExtension out /= ".html"
 
-
 getDirectoryFilesP :: FilePath -> [FilePattern] -> Action [Path Rel File]
 getDirectoryFilesP base patterns =
   getDirectoryFiles base patterns >>= mapM parseRelFile
@@ -650,7 +647,6 @@ needLinkDependencies file = do
   linkFile <- addExtension ".links" (file `rootTo` linksDir)
   links <- readLinks (toFilePath linkFile)
   needSiteFiles $ mapMaybe (resolveSiteFile (parent file)) links
-
 
 main :: IO ()
 main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
