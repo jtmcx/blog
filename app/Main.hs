@@ -5,8 +5,6 @@ import Control.Monad.Trans.State (StateT (..), gets, modify)
 import Data.List (sortOn)
 import Data.Maybe (fromMaybe)
 import Data.Ord (Down (Down))
-import Data.Set (Set)
-import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
@@ -22,7 +20,8 @@ import Lucid
 import Lucid.Base (makeAttributes)
 import Main.Path
 import Main.Path.Extra
-import Network.URI (URI (..), escapeURIString, isUnescapedInURIComponent, parseRelativeReference, uriToString)
+import Network.URI (URI (..), escapeURIString, uriToString, uriIsRelative, isUnreserved, nullURI, parseURIReference, unEscapeString)
+import qualified Network.URI as URI
 import Network.URI.Static (uri)
 import Text.Atom.Feed (Entry (..), Feed (..), TextContent (..))
 import qualified Text.Atom.Feed.Export as Atom
@@ -34,6 +33,9 @@ import Text.Pandoc.Highlighting (pygments)
 import Text.Pandoc.Shared (stringify)
 import Text.Pandoc.Walk (walkM)
 import Web.Sitemap.Gen (Sitemap (..), SitemapUrl (..), renderSitemap)
+import Control.Monad (guard)
+import Data.Maybe (mapMaybe)
+import Data.Functor (($>))
 
 -- Configuration
 -----------------------------------------------------------------------
@@ -80,14 +82,6 @@ parseUuid s =
     Just uuid -> pure uuid
     Nothing -> fail $ "invalid uuid: " ++ T.unpack s
 
--- | URI-escape a given 'PagePath'.
-escapeAbsPath :: Path Abs t -> Text
-escapeAbsPath path =
-  let segments = drop 1 (FilePath.splitDirectories (toFilePath path))
-   in "/" <> T.intercalate "/" (map escapeSegment segments)
-  where
-    escapeSegment = T.pack . escapeURIString isUnescapedInURIComponent
-
 -- | Convert a URI to a string.
 uriString :: URI -> String
 uriString x = uriToString id x ""
@@ -96,10 +90,21 @@ uriString x = uriToString id x ""
 uriText :: URI -> Text
 uriText = T.pack . uriString
 
--- | Generate the fully-qualified URI to a given page.
--- todo: use relativeTo?
-qualifyWith :: URI -> Path Abs t -> URI
-qualifyWith base path = base {uriPath = T.unpack (escapeAbsPath path)}
+-- | URI-escape a given 'FilePath'.
+escapeFilePath :: FilePath -> String
+escapeFilePath = escapeURIString (\c -> isUnreserved c || c == '/')
+
+-- | URI-escape a given 'Path'.
+escapePath :: Path b t -> String
+escapePath p = escapeFilePath (toFilePath p)
+
+-- | Convert a 'FilePath' to a relative 'URI'
+filePathToUri :: FilePath -> URI
+filePathToUri p = nullURI {uriPath = escapeFilePath p}
+
+-- | Convert a 'Path' to a relative 'URI'
+pathToUri :: Path b t -> URI
+pathToUri p = nullURI {uriPath = escapePath p}
 
 -- Post Front-matter
 -----------------------------------------------------------------------
@@ -233,28 +238,33 @@ atomPostEntry meta =
 dayToUTCTime :: Day -> UTCTime
 dayToUTCTime day = UTCTime day 0
 
--- | The sitemap entry for a given page.
-sitemapUrl :: URI -> Maybe Day -> SitemapUrl
-sitemapUrl target updated =
+-- | The sitemap entry for the home page.
+sitemapHomeEntry :: SitemapUrl
+sitemapHomeEntry =
   SitemapUrl
-    { sitemapLocation = uriText target,
-      sitemapLastModified = dayToUTCTime <$> updated,
+    { sitemapLocation = uriText $ permalink [absfile|/index.html|],
+      sitemapLastModified = Nothing,
       sitemapChangeFrequency = Nothing,
       sitemapPriority = Nothing
     }
 
 -- | The sitemap entry for a given post.
-sitemapPostUrl :: (Path Rel File, PostMeta) -> Action SitemapUrl
-sitemapPostUrl (src, meta) = do
-  file <- root </$> (src -<.> ".html")
-  pure $ sitemapUrl (qualifyWith baseUri file) (Just (lastUpdate meta))
+sitemapPostEntry :: Path Rel File -> PostMeta -> Action SitemapUrl
+sitemapPostEntry src meta = do
+  path <- root </$> (src -<.> ".html")
+  pure $ SitemapUrl
+    { sitemapLocation = uriText (permalink path),
+      sitemapLastModified = Just $ dayToUTCTime (lastUpdate meta),
+      sitemapChangeFrequency = Nothing,
+      sitemapPriority = Nothing
+    }
 
 -- | The full sitemap for the home page and all posts.
-sitemap :: [(Path Rel File, PostMeta)] -> Action Sitemap
-sitemap posts = do
-  postUrls <- mapM sitemapPostUrl posts
-  let homeUrl = sitemapUrl (qualifyWith baseUri [absfile|/index.html|]) Nothing
-  pure $ Sitemap (homeUrl : postUrls)
+sitemap :: Action Sitemap
+sitemap = do
+  let home = sitemapHomeEntry
+  posts <- readAllPostMetas >>= mapM (uncurry sitemapPostEntry)
+  pure $ Sitemap (home : posts)
 
 -- Actions
 -----------------------------------------------------------------------
@@ -294,8 +304,7 @@ docToHtml doc = runPandoc $ Pandoc.writeHtml5String writerOptions doc
 readPostMeta :: Path a File -> Action PostMeta
 readPostMeta path = readMarkdown path >>= parsePostMeta
 
--- | Read and parse the front-matter for all posts. Note that posts
--- are not sorted in any way.
+-- | Read and parse the front-matter for all posts.
 readAllPostMetas :: Action [(Path Rel File, PostMeta)]
 readAllPostMetas = do
   posts <- getDirectoryFiles "" ["posts/*.md"] >>= mapM parseRelFile
@@ -303,74 +312,93 @@ readAllPostMetas = do
   zip posts <$> mapM readPostMeta posts
 
 -- | Read a page's tracked internal links from a file.
-readLinks :: FilePath -> Action (Set (Path Abs File))
+readLinks :: FilePath -> Action [URI]
 readLinks path = do
-  contents <- readFile' path
-  Set.fromList <$> mapM parseAbsFile (lines contents)
+    contents <- readFile' path
+    mapM parseLine (lines contents)
+  where
+    parseLine :: String -> Action URI
+    parseLine x =
+      case parseURIReference x of
+        Just url -> pure url
+        Nothing -> fail $ "failed to parse uri: " ++ x
 
 -- | Write a page's tracked internal links to a file.
-writeLinks :: FilePath -> Set (Path Abs File) -> Action ()
-writeLinks out links = writeFile' out content
-  where
-    content = unlines (map toFilePath (Set.toList links))
+writeLinks :: FilePath -> [URI] -> Action ()
+writeLinks out links =
+  writeFile' out $ unlines (map uriString links)
+
 
 -- HTML Builders
 -----------------------------------------------------------------------
+
+type SitePath t = Path Abs t
 
 -- | The HTML builder monad.
 type Builder = HtmlT (StateT BuildState Action)
 
 data BuildState = BuildState
   { -- | The target location of the page we're building.
-    pagePath :: Path Abs File,
-    -- | Collected set of links to internal pages.
-    pageInternalLinks :: Set (Path Abs File)
+    pagePath :: SitePath File,
+    -- | Collected set of links in the page.
+    trackedLinks :: [URI]
   }
 
 -- | Run a shake action in a builder.
 action :: Action a -> Builder a
 action = lift . lift
 
--- | Get the target location of the page we're building.
-getPagePath :: Builder (Path Abs File)
+-- | Get the target location of the current page.
+getPagePath :: Builder (SitePath File)
 getPagePath = lift $ gets pagePath
 
--- | Get the target directory of the page we're building.
-getPageDir :: Builder (Path Abs Dir)
+-- | Get the target directory of the current page.
+getPageDir :: Builder (SitePath Dir)
 getPageDir = parent <$> getPagePath
 
--- | Return the fully-qualified URI for this page.
-getPageUri :: Builder URI
-getPageUri = qualifyWith baseUri <$> getPagePath
+-- | Convert an internal path to an absolute URI.
+permalink :: SitePath a -> URI
+permalink path = pathToUri path `URI.relativeTo` baseUri
 
--- | Track a link to an internal page.
-trackInternalLink :: Path Abs File -> Builder ()
-trackInternalLink f = lift $ modify $ \s ->
-  s {pageInternalLinks = Set.insert f (pageInternalLinks s)}
+-- | Return the absolute URI for this page.
+pagePermalink :: Builder URI
+pagePermalink = permalink <$> getPagePath
+
+-- | Track a link to another page.
+trackLink :: URI -> Builder ()
+trackLink x = lift $ modify $ \s ->
+  s {trackedLinks = x : trackedLinks s}
+
+-- | todo: explain ...
+--
+-- >>> resolveSiteFile [absdir|/posts/|] [uri|../static/cat.gif]
+-- Just "/static/cat.gif"
+-- >>> resolveSiteFile [absdir|/posts/|] [uri|other.md#heading]
+-- Just "/posts/other.md"
+-- >>> resolveSiteFile [absdir|/posts/|] [uri|https//example.com]
+-- Nothing
+resolveSiteFile :: SitePath Dir -> URI -> Maybe (SitePath File)
+resolveSiteFile cwd url = do
+  guard (uriIsRelative url)
+  case unEscapeString (uriPath url) of
+    p@('/' : _) -> parseAbsFile p
+    p -> resolveAgainst cwd p
+
 
 -- | Resolve an internal link inside a document, relative to a given
--- directory in the site.
+-- working directory.
 --
--- >>> resolveInternalLink [absdir|/posts/|] "../static/cat.gif"
--- Just "/static/cat.gif"
--- >>> resolveInternalLink [absdir|/posts/|] "other.md#heading"
+-- >>> resolveDocumentLink [absdir|/posts/|] [uri|other.md#heading]
 -- Just "/posts/other.html"
-resolveInternalLink :: Path Abs Dir -> Text -> Maybe (Path Abs File)
-resolveInternalLink base link = do
-  p <- resolvedPath
+resolveDocumentLink :: SitePath Dir -> URI -> Maybe (SitePath File)
+resolveDocumentLink cwd url = do
+  p <- resolveSiteFile cwd url
   case fileExtension p of
     -- todo: should probably be a little more careful about matching the
     -- shake rules, so that we transform file extensions in the right
     -- places (e.g. restrict '.md' -> '.html' to '/posts', not '/static').
     Just ".md" -> p -<.> ".html"
     _ -> Just p
-  where
-    resolvedPath :: Maybe (Path Abs File)
-    resolvedPath =
-      case uriPath <$> parseRelativeReference (T.unpack link) of
-        Just p@('/' : _) -> parseAbsFile p
-        Just p -> resolveAgainst base p
-        Nothing -> Nothing
 
 -- | Rewrite all links in a Pandoc document monadically.
 rewriteLinksM :: (Monad m) => (Text -> m Text) -> Pandoc -> m Pandoc
@@ -385,29 +413,32 @@ rewriteLinksM f = walkM $ \case
 
 -- | Make all internal links relative and track them.
 processDocumentLinks :: Pandoc -> Builder Pandoc
-processDocumentLinks = rewriteLinksM resolve
+processDocumentLinks = rewriteLinksM (resolve . T.unpack)
   where
-    resolve :: Text -> Builder Text
-    resolve link = do
-      dir <- getPageDir
-      case resolveInternalLink dir link of
-        Just internal -> do
-          trackInternalLink internal
-          withRelative internal pure
-        Nothing -> pure link -- external link, leave untouched.
+    resolve :: String -> Builder Text
+    resolve text = do
+      case parseURIReference text of
+        Just url -> do
+          cwd <- getPageDir
+          case resolveDocumentLink cwd url of
+            Just internal -> withRelative internal pure
+            Nothing -> trackLink url $> uriText url
+        Nothing -> 
+          action $ fail $ "Failed to parse uri: " ++ text
 
 -- | Calculate the path relative to the current page.
-withRelative :: Path Abs File -> (Text -> Builder a) -> Builder a
+withRelative :: SitePath File -> (Text -> Builder a) -> Builder a
 withRelative target f = do
-  trackInternalLink target
   dir <- getPageDir
+  let rel = relativeFile dir target
+  trackLink (filePathToUri rel)
   f (T.pack $ relativeFile dir target)
 
 -- | Generate HTML and write it to a file.
 runBuilder :: Path Rel File -> Builder () -> Action BuildState
 runBuilder out builder = do
   path <- replaceProperPrefix htmlDir root out
-  (content, st) <- runStateT (renderTextT builder) (BuildState path Set.empty)
+  (content, st) <- runStateT (renderTextT builder) (BuildState path [])
   writeFile' (toFilePath out) (TL.unpack content)
   pure st
 
@@ -468,7 +499,7 @@ buildPostMeta meta = do
   prop "og:type" "article"
   prop "og:title" (postTitle meta)
   prop "og:description" `mapM_` postSummary meta
-  prop "og:url" . uriText =<< getPageUri
+  prop "og:url" . uriText =<< pagePermalink
   prop "article:published_time" $ formatDay (postDate meta)
   where
     -- https://github.com/chrisdone/lucid/pull/168
@@ -591,32 +622,58 @@ postAssetPattern out =
   (htmlDir </?> "posts//*") ?== out
     && FilePath.takeExtension out /= ".html"
 
+
+getDirectoryFilesP :: FilePath -> [FilePattern] -> Action [Path Rel File]
+getDirectoryFilesP base patterns =
+  getDirectoryFiles base patterns >>= mapM parseRelFile
+
+-- | Treat a relative path as if it's absolute.
+asAbsolute :: Path Rel t -> Path Abs t
+asAbsolute p = [absdir|/|] </> p
+
+-- | Treat an absolute path as if it's relative.
+asRelative :: Path Abs t -> Path Rel t
+asRelative p = fromMaybe undefined $ stripProperPrefix [absdir|/|] p
+
+-- | Re-root an absolute path on to a given base directory.
+rootTo :: Path Abs t -> Path b Dir -> Path b t
+rootTo p newRoot = newRoot </> asRelative p
+
+needSiteFiles :: [SitePath t] -> Action ()
+needSiteFiles fs = need $ map (toFilePath . (`rootTo` htmlDir)) fs
+
+needSiteFile :: SitePath File -> Action ()
+needSiteFile f = needSiteFiles [f]
+
+needLinkDependencies :: SitePath File -> Action ()
+needLinkDependencies file = do
+  linkFile <- addExtension ".links" (file `rootTo` linksDir)
+  links <- readLinks (toFilePath linkFile)
+  needSiteFiles $ mapMaybe (resolveSiteFile (parent file)) links
+
+
 main :: IO ()
 main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
   want ["all"]
 
   phony "all" $ do
-    need [htmlDir </?> "index.html"]
-    need [htmlDir </?> "feed.atom"]
-    need [htmlDir </?> "sitemap.xml"]
-    need [htmlDir </?> "favicon.ico"]
+    needSiteFile [absfile|/index.html|]
+    needLinkDependencies [absfile|/index.html|]
+    needSiteFile [absfile|/feed.atom|]
+    needSiteFile [absfile|/sitemap.xml|]
+    needSiteFile [absfile|/favicon.ico|]
+    need ["all-static", "all-posts"]
 
-    -- Copy everything in static.
-    files <- getDirectoryFiles "" ["static//*"] >>= mapM parseRelFile
-    need $ map (toFilePath . (htmlDir </>)) files
+  phony "all-static" $ do
+    sources <- getDirectoryFilesP "" ["static//*"]
+    let targets = map asAbsolute sources
+    needSiteFiles targets
 
-    -- Build all the posts.
-    posts <- getDirectoryFiles "" ["posts/*.md"] >>= mapM parseRelFile
-    replacedExt <- (mapM ((-<.> ".html")) posts)
-    need $ map (toFilePath . (htmlDir </>)) replacedExt
-
-    -- Check that every internally-linked target actually gets built.
-    postLinks <- mapM (addExtension ".links") replacedExt
-    let linkFiles = map (toFilePath . (linksDir </>)) ([relfile|index.html.links|] : postLinks)
-    need linkFiles
-    links <- Set.unions <$> mapM readLinks linkFiles
-    targets <- mapM (replaceProperPrefix root htmlDir) (Set.toList links)
-    need $ map toFilePath targets
+  phony "all-posts" $ do
+    sources <- getDirectoryFilesP "" ["posts/*.md"]
+    targets <- mapM (\f -> asAbsolute <$> (f -<.> ".html")) sources
+    needSiteFiles targets
+    mapM_ needLinkDependencies targets
 
   [ htmlDir </?> "index.html",
     linksDir </?> "index.html.links"
@@ -626,7 +683,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
         out <- parseRelFile htmlOut
         st <- runBuilder out buildHome
         putInfo $ "Generated " ++ htmlOut
-        writeLinks linksOut (pageInternalLinks st)
+        writeLinks linksOut (trackedLinks st)
         putInfo $ "Generated " ++ linksOut
       _ -> undefined
 
@@ -640,7 +697,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
         doc <- readMarkdown src
         st <- runBuilder out $ buildPost doc
         putInfo $ "Generated " ++ htmlOut
-        writeLinks linksOut (pageInternalLinks st)
+        writeLinks linksOut (trackedLinks st)
         putInfo $ "Generated " ++ linksOut
       _ -> undefined
 
@@ -653,8 +710,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
       Nothing -> fail "Failed to generate Atom feed"
 
   htmlDir </?> "sitemap.xml" %> \out -> do
-    posts <- readAllPostMetas
-    xml <- decodeUtf8 . renderSitemap <$> sitemap posts
+    xml <- decodeUtf8 . renderSitemap <$> sitemap
     writeFile' out (TL.unpack xml)
     putInfo $ "Generated " ++ out
 
