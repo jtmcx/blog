@@ -592,7 +592,7 @@ buildPostList = do
 -- | Construct the list of blog entries on the home page.
 buildProjectList :: Builder ()
 buildProjectList = do
-  h2_ "Selected Personal Projects"
+  h2_ "Personal Projects"
   html <- action $ readMarkdown [relfile|partials/projects.md|] >>= docToHtml
   div_ [class_ "projects"] $ toHtmlRaw html
 
