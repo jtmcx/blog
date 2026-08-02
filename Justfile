@@ -42,5 +42,9 @@ export COPYFILE_DISABLE := "1"
 tar:
     tar zcf html.tgz -C _site/html .
 
+# Deploy the static site
+push: tar
+    scp html.tgz jtm.cx:
+    ssh jtm.cx "./deploy-site html.tgz"
 
 alias ghci := repl
