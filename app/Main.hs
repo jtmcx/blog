@@ -25,10 +25,10 @@ import Network.URI.Static (uri)
 import Text.Atom.Feed (Entry (..), Feed (..), TextContent (..))
 import qualified Text.Atom.Feed as Atom
 import qualified Text.Atom.Feed.Export as Atom
-import Text.Pandoc (enableExtension, pandocExtensions)
+import Text.Pandoc (Meta, MetaValue (..), enableExtension, nullMeta, pandocExtensions)
 import qualified Text.Pandoc as Pandoc
 import Text.Pandoc.Class (PandocPure, runPure)
-import Text.Pandoc.Definition (Inline (..), Pandoc (..), lookupMeta)
+import Text.Pandoc.Definition (Block (..), Inline (..), Pandoc (..))
 import Text.Pandoc.Highlighting (pygments)
 import Text.Pandoc.Shared (stringify)
 import Text.Pandoc.Walk (walkM)
@@ -96,59 +96,124 @@ filePathToUri p = nullURI {uriPath = escapeFilePath p}
 pathToUri :: Path b t -> URI
 pathToUri p = nullURI {uriPath = escapePath p}
 
+-- | Treat a relative path as if it's absolute.
+asAbsolute :: Path Rel t -> Path Abs t
+asAbsolute p = [absdir|/|] </> p
+
+-- | Treat an absolute path as if it's relative.
+asRelative :: Path Abs t -> Path Rel t
+asRelative p = fromMaybe beleiveMe $ stripProperPrefix [absdir|/|] p
+  where
+    beleiveMe = error "internal error: 'stripProperPreifx /' failed"
+
+-- | Re-root an absolute path on to a given base directory.
+rootTo :: Path Abs t -> Path b Dir -> Path b t
+rootTo p newRoot = newRoot </> asRelative p
+
 -- Post Front-matter
 -----------------------------------------------------------------------
 
 -- | Post front-matter.
 data PostMeta = PostMeta
   { -- | The title of the post.
-    postTitle :: Text,
+    postTitle :: [Inline],
     -- | Summary of the article contents. Optional.
-    postSummary :: Maybe Text,
+    postSummary :: Maybe [Inline],
     -- | The day the article was published.
     postDate :: Day,
     -- | The date of the most recent update.
-    postUpdated :: Maybe Day,
-    -- | Every post has a unique identifier. This identifier is permanent.
-    -- It's used to identify the post in Atom feeds, and allows us to
-    -- identify posts even if the title, url, or contents change.
-    --
-    -- This field is optional. If it's not provided, the UUID will be
-    -- calculated deterministically using the title, publish date, and
-    -- the global Atom feed id. If the title needs to be updated for a
-    -- published article, then the generated Uuid *must* be copied into
-    -- the post's metadata in order to preserve it.
-    postUuid :: Maybe UUID
+    postUpdated :: Maybe Day
   }
 
--- | Parse a post's front-matter.
-parsePostMeta :: (MonadFail m) => Pandoc -> m PostMeta
-parsePostMeta (Pandoc meta _) = do
-  title <- pure $ field "title"
-  summary <- pure $ field "summary"
-  date <- mapM parseDay (field "date")
-  updated <- mapM parseDay (field "updated")
-  uuid <- mapM parseUuid (field "uuid")
-  pure $
-    PostMeta
-      { postTitle = title `orElse` "Untitled",
-        postSummary = summary,
-        postDate = date `orElse` epochDay,
-        postUpdated = updated,
-        postUuid = uuid
-      }
-  where
-    -- todo: make sure that meta value is plain text.
-    field :: Text -> Maybe Text
-    field key = fmap stringify $ lookupMeta key meta
-
-    -- todo: this isn't somewhere in a core library?
-    orElse :: Maybe a -> a -> a
-    orElse = flip fromMaybe
+-- | Empty post metadata.
+emptyPostMeta :: PostMeta
+emptyPostMeta =
+  PostMeta
+    { postTitle = [],
+      postSummary = Nothing,
+      postDate = epochDay,
+      postUpdated = Nothing
+    }
 
 -- | The day of the most recent update.
 lastUpdate :: PostMeta -> Day
 lastUpdate meta = fromMaybe (postDate meta) (postUpdated meta)
+
+-- | Get the post title as plain text.
+postTitleText :: PostMeta -> Text
+postTitleText = stringify . postTitle
+
+-- | Get the post title as HTML.
+postTitleHtml :: (MonadFail m) => PostMeta -> m Text
+postTitleHtml = writeHtml . inlinesToDoc . postTitle
+  where
+    writeHtml = runPandoc . Pandoc.writeHtml5String Pandoc.def
+
+-- | Get the post summary as plain text.
+postSummaryText :: PostMeta -> Maybe Text
+postSummaryText meta = stringify <$> postSummary meta
+
+-- | Get the post summary as HTML.
+postSummaryHtml :: (MonadFail m) => PostMeta -> m (Maybe Text)
+postSummaryHtml = mapM (writeHtml . inlinesToDoc) . postSummary
+  where
+    writeHtml = runPandoc . Pandoc.writeHtml5String Pandoc.def
+
+-- | Convert some inline text to a document.
+inlinesToDoc :: [Inline] -> Pandoc
+inlinesToDoc x = Pandoc nullMeta [Plain x]
+
+-- | Parse a meta value as text.
+metaToText :: (MonadFail m) => MetaValue -> m Text
+metaToText = \case
+  MetaString s -> pure s
+  _ -> fail $ "meta value is not text"
+
+-- | Parse a meta value as inline text.
+metaToInlines :: (MonadFail m) => MetaValue -> m [Inline]
+metaToInlines = \case
+  MetaInlines x -> pure x
+  MetaString s -> pure [Pandoc.Str s]
+  _ -> fail $ "meta value is not inline text"
+
+parseMetaTitle :: (MonadFail m) => Meta -> m [Inline]
+parseMetaTitle meta = do
+  case Pandoc.lookupMeta "title" meta of
+    Just val -> metaToInlines val
+    Nothing -> pure [Pandoc.Str "Untitled"]
+
+parseMetaSummary :: (MonadFail m) => Meta -> m (Maybe [Inline])
+parseMetaSummary meta = do
+  case Pandoc.lookupMeta "summary" meta of
+    Just val -> Just <$> metaToInlines val
+    Nothing -> pure Nothing
+
+parseMetaDate :: (MonadFail m) => Meta -> m Day
+parseMetaDate meta = do
+  case Pandoc.lookupMeta "date" meta of
+    Just val -> metaToText val >>= parseDay
+    Nothing -> pure epochDay
+
+parseMetaUpdated :: (MonadFail m) => Meta -> m (Maybe Day)
+parseMetaUpdated meta = do
+  case Pandoc.lookupMeta "updated" meta of
+    Just val -> parseDay <$> metaToText val
+    Nothing -> pure Nothing
+
+-- | Parse a post's front-matter.
+parsePostMeta :: (MonadFail m) => Pandoc -> m PostMeta
+parsePostMeta (Pandoc meta _) = do
+  title <- parseMetaTitle meta
+  summary <- parseMetaSummary meta
+  date <- parseMetaDate meta
+  updated <- parseMetaUpdated meta
+  pure $
+    emptyPostMeta
+      { postTitle = title,
+        postSummary = summary,
+        postDate = date,
+        postUpdated = updated
+      }
 
 -- Atom Feed
 -----------------------------------------------------------------------
@@ -162,14 +227,16 @@ emptyEntry :: Entry
 emptyEntry = Atom.nullEntry "" (TextString "") ""
 
 -- | Contruct an Atom feed from a list of posts.
-atomFeed :: [(Path Rel File, PostMeta)] -> Feed
-atomFeed posts =
-  emptyFeed
-    { feedId = uriText $ permalink [absdir|/posts|],
-      feedTitle = TextString siteName,
-      feedUpdated = formatDay mostRecentUpdate,
-      feedEntries = map (uncurry atomPostEntry) posts
-    }
+atomFeed :: (MonadFail m) => [(Path Rel File, PostMeta)] -> m Feed
+atomFeed posts = do
+  entries <- mapM (uncurry atomPostEntry) posts
+  pure $
+    emptyFeed
+      { feedId = uriText $ permalink [absdir|/posts|],
+        feedTitle = TextString siteName,
+        feedUpdated = formatDay mostRecentUpdate,
+        feedEntries = entries
+      }
   where
     mostRecentUpdate :: Day
     mostRecentUpdate =
@@ -178,15 +245,18 @@ atomFeed posts =
         [] -> epochDay -- No posts; use dummy 1970-01-01.
 
 -- | Contruct an Atom feed entry for a given post.
-atomPostEntry :: Path Rel File -> PostMeta -> Entry
-atomPostEntry src meta =
-  emptyEntry
-    { entryId = uriText $ permalink (asAbsolute (src -<.>! ".html")),
-      entryTitle = TextString (postTitle meta),
-      entryUpdated = formatDay (lastUpdate meta),
-      entryPublished = Just $ formatDay (postDate meta),
-      entrySummary = TextString <$> postSummary meta
-    }
+atomPostEntry :: (MonadFail m) => Path Rel File -> PostMeta -> m Entry
+atomPostEntry src meta = do
+  title <- postTitleHtml meta
+  summary <- postSummaryHtml meta
+  pure $
+    emptyEntry
+      { entryId = uriText $ permalink (asAbsolute (src -<.>! ".html")),
+        entryTitle = HTMLString title,
+        entryUpdated = formatDay (lastUpdate meta),
+        entryPublished = Just $ formatDay (postDate meta),
+        entrySummary = HTMLString <$> summary
+      }
 
 -- Sitemap
 -----------------------------------------------------------------------
@@ -222,7 +292,7 @@ sitemap posts = do
 -----------------------------------------------------------------------
 
 -- | Run a pandoc monad as an action. Fails on error.
-runPandoc :: PandocPure a -> Action a
+runPandoc :: (MonadFail m) => PandocPure a -> m a
 runPandoc m = do
   case runPure m of
     Right x -> pure x
@@ -447,8 +517,8 @@ buildPostMeta :: PostMeta -> Builder ()
 buildPostMeta meta = do
   prop "og:site_name" siteName
   prop "og:type" "article"
-  prop "og:title" (postTitle meta)
-  prop "og:description" `mapM_` postSummary meta
+  prop "og:title" (postTitleText meta)
+  prop "og:description" `mapM_` postSummaryText meta
   prop "og:url" . uriText =<< pagePermalink
   prop "article:published_time" $ formatDay (postDate meta)
   where
@@ -462,10 +532,11 @@ buildPostMeta meta = do
 
 -- | Build the article @<header>@.
 buildPostHeader :: PostMeta -> Builder ()
-buildPostHeader meta =
+buildPostHeader meta = do
+  titleHtml <- action $ postTitleHtml meta
   header_ $ do
     p_ [class_ "meta"] (toHtml $ "Published · " ++ date)
-    h1_ [class_ "title"] (toHtml $ postTitle meta)
+    h1_ [class_ "title"] (toHtmlRaw titleHtml)
   where
     date :: String
     date = formatTime defaultTimeLocale "%b %d %Y" (postDate meta)
@@ -476,7 +547,7 @@ buildPost unprocessedDoc = do
   meta <- action $ parsePostMeta doc
   doctypehtml_ $ do
     head_ $ do
-      buildTitle (postTitle meta)
+      buildTitle (postTitleText meta)
       buildBaseHead
       buildPostMeta meta
     body_ $ do
@@ -534,8 +605,9 @@ buildPostListEntry src meta = do
   where
     link = do
       file <- action $ root </$> (src -<.> ".html")
-      withRelative file $ \path ->
-        a_ [href_ path] (toHtml (postTitle meta))
+      withRelative file $ \path -> do
+        titleHtml <- action $ postTitleHtml meta
+        a_ [href_ path] (toHtmlRaw titleHtml)
 
     date = formatTime defaultTimeLocale "%b %d %Y" (postDate meta)
 
@@ -642,7 +714,8 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
 
   htmlDir </?> "feed.atom" %> \out -> do
     posts <- readAllPostMetas
-    case Atom.textFeed (atomFeed posts) of
+    feed <- atomFeed posts
+    case Atom.textFeed feed of
       Just xml -> do
         writeFile' out (TL.unpack xml)
         putInfo $ "Generated " ++ out
