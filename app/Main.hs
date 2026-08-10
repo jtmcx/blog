@@ -234,7 +234,8 @@ atomFeed posts = do
       { feedId = uriText $ permalink [absdir|/posts|],
         feedTitle = TextString siteName,
         feedUpdated = formatDay mostRecentUpdate,
-        feedEntries = entries
+        feedEntries = entries,
+        feedIcon = Just (uriText $ permalink [absfile|/favicon.ico|])
       }
   where
     mostRecentUpdate :: Day
