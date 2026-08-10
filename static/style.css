@@ -189,3 +189,37 @@ p.back-to-top {
   padding-top: 1em;
   text-align: center;
 }
+
+/* Gruvbox dark */
+pre code .kw { color: #fb4934; }                                  /* keyword */
+pre code .cf { color: #fb4934; }                                  /* control flow */
+pre code .dt { color: #fabd2f; }                                  /* data type */
+pre code .dv { color: #d3869b; }                                  /* decimal value */
+pre code .bn { color: #d3869b; }                                  /* base-n value */
+pre code .fl { color: #d3869b; }                                  /* float */
+pre code .st { color: #b8bb26; }                                  /* string */
+pre code .vs { color: #b8bb26; }                                  /* verbatim string */
+pre code .ss { color: #b8bb26; }                                  /* special string */
+pre code .ch { color: #b8bb26; }                                  /* char */
+pre code .sc { color: #b8bb26; }                                  /* special char */
+pre code .co { color: #928374; font-style: italic; }              /* comment */
+pre code .cv { color: #928374; font-style: italic; }              /* comment var */
+pre code .do { color: #928374; font-style: italic; }              /* documentation */
+pre code .an { color: #928374; font-style: italic; }              /* annotation */
+pre code .in { color: #928374; font-style: italic; }              /* information */
+pre code .fu { color: #83a598; }                                  /* function */
+pre code .va { color: #ebdbb2; }                                  /* variable */
+pre code .op { color: #fe8019; }                                  /* operator */
+pre code .pp { color: #8ec07c; }                                  /* preprocessor */
+pre code .im { color: #8ec07c; }                                  /* import */
+pre code .at { color: #8ec07c; }                                  /* attribute */
+pre code .cn { color: #fe8019; }                                  /* constant */
+pre code .bu { color: #fe8019; }                                  /* builtin */
+pre code .ex { color: #fe8019; }                                  /* extension */
+pre code .er { color: #fb4934; font-weight: bold; }               /* error */
+pre code .wa { color: #fb4934; font-weight: bold; }               /* warning */
+pre code .al { color: #fb4934; font-weight: bold; }               /* alert */
+
+/* Fix diff syntax higlighting. */
+pre code.diff .st { color: #fb4934; }                             /* removed line */
+pre code.diff .va { color: #b8bb26; }                             /* added line */
