@@ -118,22 +118,12 @@ data PostMeta = PostMeta
   { -- | The title of the post.
     postTitle :: [Inline],
     -- | Summary of the article contents. Optional.
-    postSummary :: Maybe [Inline],
+    postSummary :: Maybe [Block],
     -- | The day the article was published.
     postDate :: Day,
     -- | The date of the most recent update.
     postUpdated :: Maybe Day
   }
-
--- | Empty post metadata.
-emptyPostMeta :: PostMeta
-emptyPostMeta =
-  PostMeta
-    { postTitle = [],
-      postSummary = Nothing,
-      postDate = epochDay,
-      postUpdated = Nothing
-    }
 
 -- | The day of the most recent update.
 lastUpdate :: PostMeta -> Day
@@ -155,7 +145,7 @@ postSummaryText meta = stringify <$> postSummary meta
 
 -- | Get the post summary as HTML.
 postSummaryHtml :: (MonadFail m) => PostMeta -> m (Maybe Text)
-postSummaryHtml = mapM (writeHtml . inlinesToDoc) . postSummary
+postSummaryHtml = mapM (writeHtml . Pandoc nullMeta) . postSummary
   where
     writeHtml = runPandoc . Pandoc.writeHtml5String Pandoc.def
 
@@ -167,6 +157,7 @@ inlinesToDoc x = Pandoc nullMeta [Plain x]
 metaToText :: (MonadFail m) => MetaValue -> m Text
 metaToText = \case
   MetaString s -> pure s
+  MetaInlines x -> pure (stringify x)
   _ -> fail $ "meta value is not text"
 
 -- | Parse a meta value as inline text.
@@ -176,16 +167,24 @@ metaToInlines = \case
   MetaString s -> pure [Pandoc.Str s]
   _ -> fail $ "meta value is not inline text"
 
+-- | Parse a meta value as inline text.
+metaToBlocks :: (MonadFail m) => MetaValue -> m [Block]
+metaToBlocks = \case
+  MetaInlines x -> pure [Para x]
+  MetaString s -> pure [Para [Pandoc.Str s]]
+  MetaBlocks x -> pure x
+  _ -> fail $ "meta value is not block text"
+
 parseMetaTitle :: (MonadFail m) => Meta -> m [Inline]
 parseMetaTitle meta = do
   case Pandoc.lookupMeta "title" meta of
     Just val -> metaToInlines val
     Nothing -> pure [Pandoc.Str "Untitled"]
 
-parseMetaSummary :: (MonadFail m) => Meta -> m (Maybe [Inline])
+parseMetaSummary :: (MonadFail m) => Meta -> m (Maybe [Block])
 parseMetaSummary meta = do
   case Pandoc.lookupMeta "summary" meta of
-    Just val -> Just <$> metaToInlines val
+    Just val -> Just <$> metaToBlocks val
     Nothing -> pure Nothing
 
 parseMetaDate :: (MonadFail m) => Meta -> m Day
@@ -208,7 +207,7 @@ parsePostMeta (Pandoc meta _) = do
   date <- parseMetaDate meta
   updated <- parseMetaUpdated meta
   pure $
-    emptyPostMeta
+    PostMeta
       { postTitle = title,
         postSummary = summary,
         postDate = date,
