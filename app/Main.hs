@@ -249,13 +249,15 @@ atomPostEntry :: (MonadFail m) => Path Rel File -> PostMeta -> m Entry
 atomPostEntry src meta = do
   title <- postTitleHtml meta
   summary <- postSummaryHtml meta
+  let url = uriText $ permalink (asAbsolute (src -<.>! ".html"))
   pure $
     emptyEntry
-      { entryId = uriText $ permalink (asAbsolute (src -<.>! ".html")),
+      { entryId = url,
         entryTitle = HTMLString title,
         entryUpdated = formatDay (lastUpdate meta),
         entryPublished = Just $ formatDay (postDate meta),
-        entrySummary = HTMLString <$> summary
+        entrySummary = HTMLString <$> summary,
+        entryLinks = [Atom.nullLink url]
       }
 
 -- Sitemap
