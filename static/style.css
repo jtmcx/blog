@@ -1,3 +1,40 @@
+/* Source Serif 4 */
+
+@font-face {
+    font-family: "Source Serif 4";
+    font-weight: 200 900;
+    font-style: normal;
+    font-display: swap;
+    src: url("fonts/SourceSerif4Variable-Roman.otf.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Source Serif 4";
+    font-weight: 200 900;
+    font-style: italic;
+    font-display: swap;
+    src: url("fonts/SourceSerif4Variable-Italic.otf.woff2") format("woff2");
+}
+
+/* JetBrains Mono */
+
+@font-face {
+    font-family: "JetBrains Mono";
+    font-weight: 100 800;
+    font-style: normal;
+    font-display: swap;
+    src: url("fonts/JetBrainsMono[wght].woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "JetBrains Mono";
+    font-weight: 100 800;
+    font-style: italic;
+    font-display: swap;
+    src: url("fonts/JetBrainsMono-Italic[wght].woff2") format("woff2");
+}
+
+
 :root {
   color-scheme: light;
   --background: #fbf8f0;
@@ -145,7 +182,7 @@ li { margin-bottom: 0.4rem; }
 
 li::marker {
   color: var(--accent);
-  font-family: ui-monospace, "JetBrains Mono", monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 0.9em;
 }
 
@@ -160,7 +197,7 @@ blockquote p:first-child { margin-top: 0; }
 blockquote p:last-child { margin-bottom: 0; }
 
 code {
-  font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 0.88em;
   background: var(--accent-soft);
   color: var(--ink);
