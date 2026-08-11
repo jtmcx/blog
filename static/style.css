@@ -36,29 +36,15 @@
 
 
 :root {
-  color-scheme: light;
-  --background: #fbf8f0;
-  --ink: #2b241c;
-  --ink-soft: #5a5142;
-  --rule: #cfc3a8;
-  --accent: #b3502b;
-  --accent-soft: #e8d9b3;
-  --code-bg: #2b241c;
-  --code-fg: #f4efe4;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --background: #1c1a17;
-    --ink: #e8e1d3;
-    --ink-soft: #b8ae9c;
-    --rule: #4a4237;
-    --accent: #e2916a;
-    --accent-soft: #3a2f22;
-    --code-bg: #14120f;
-    --code-fg: #e8e1d3;
-  }
+  color-scheme: dark;
+  --background: #1c1a17;
+  --ink: #e8e1d3;
+  --ink-soft: #b8ae9c;
+  --rule: #4a4237;
+  --accent: #e2916a;
+  --accent-soft: #3a2f22;
+  --code-bg: #32302f;
+  --code-fg: #e8e1d3;
 }
 
 html {
@@ -199,7 +185,7 @@ blockquote p:last-child { margin-bottom: 0; }
 code {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.88em;
-  background: var(--accent-soft);
+  background: var(--code-bg);
   color: var(--ink);
   padding: 0.1em 0.35em;
   border-radius: 3px;
