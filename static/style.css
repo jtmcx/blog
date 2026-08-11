@@ -5,7 +5,7 @@
     font-weight: 200 900;
     font-style: normal;
     font-display: swap;
-    src: url("fonts/SourceSerif4Variable-Roman.otf.woff2") format("woff2");
+    src: url("fonts/SourceSerif4-Regular-Subset.woff2") format("woff2");
 }
 
 @font-face {
@@ -13,7 +13,7 @@
     font-weight: 200 900;
     font-style: italic;
     font-display: swap;
-    src: url("fonts/SourceSerif4Variable-Italic.otf.woff2") format("woff2");
+    src: url("fonts/SourceSerif4-Italic-Subset.woff2") format("woff2");
 }
 
 /* JetBrains Mono */
@@ -23,7 +23,7 @@
     font-weight: 100 800;
     font-style: normal;
     font-display: swap;
-    src: url("fonts/JetBrainsMono[wght].woff2") format("woff2");
+    src: url("fonts/JetBrainsMono-Regular-Subset.woff2") format("woff2");
 }
 
 @font-face {
@@ -31,7 +31,7 @@
     font-weight: 100 800;
     font-style: italic;
     font-display: swap;
-    src: url("fonts/JetBrainsMono-Italic[wght].woff2") format("woff2");
+    src: url("fonts/JetBrainsMono-Italic-Subset.woff2") format("woff2");
 }
 
 
