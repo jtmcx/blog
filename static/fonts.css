@@ -2,258 +2,34 @@
 
 @font-face {
     font-family: "Source Serif 4";
-    font-weight: 200;
+    font-weight: 200 900;
     font-style: normal;
     font-display: swap;
-    src: url("fonts/SourceSerif4-ExtraLight.ttf") format("truetype");
+    src: url("fonts/SourceSerif4Variable-Roman.otf.woff2") format("woff2");
 }
 
 @font-face {
     font-family: "Source Serif 4";
-    font-weight: 200;
+    font-weight: 200 900;
     font-style: italic;
     font-display: swap;
-    src: url("fonts/SourceSerif4-ExtraLightItalic.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 300;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-Light.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 300;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-LightItalic.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-Regular.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 400;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-Italic.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 500;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-Medium.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 500;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-MediumItalic.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 600;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-SemiBold.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 600;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-SemiBoldItalic.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-Bold.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 700;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-BoldItalic.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 800;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-ExtraBold.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 800;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-ExtraBoldItalic.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 900;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-Black.ttf") format("truetype");
-}
-
-@font-face {
-    font-family: "Source Serif 4";
-    font-weight: 900;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/SourceSerif4-BlackItalic.ttf") format("truetype");
+    src: url("fonts/SourceSerif4Variable-Italic.otf.woff2") format("woff2");
 }
 
 /* JetBrains Mono */
 
 @font-face {
     font-family: "JetBrains Mono";
-    font-weight: 100;
+    font-weight: 100 800;
     font-style: normal;
     font-display: swap;
-    src: url("fonts/JetBrainsMono-Thin.woff2") format("woff2");
+    src: url("fonts/JetBrainsMono[wght].woff2") format("woff2");
 }
 
 @font-face {
     font-family: "JetBrains Mono";
-    font-weight: 100;
+    font-weight: 100 800;
     font-style: italic;
     font-display: swap;
-    src: url("fonts/JetBrainsMono-ThinItalic.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 200;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-ExtraLight.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 200;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-ExtraLightItalic.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 300;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-Light.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 300;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-LightItalic.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-Regular.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 400;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-Italic.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 500;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-Medium.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 500;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-MediumItalic.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 600;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-SemiBold.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 600;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-SemiBoldItalic.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-Bold.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 700;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-BoldItalic.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 800;
-    font-style: normal;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-ExtraBold.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "JetBrains Mono";
-    font-weight: 800;
-    font-style: italic;
-    font-display: swap;
-    src: url("fonts/JetBrainsMono-ExtraBoldItalic.woff2") format("woff2");
+    src: url("fonts/JetBrainsMono-Italic[wght].woff2") format("woff2");
 }
