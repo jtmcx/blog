@@ -139,6 +139,47 @@ Finally, we restart relayd to pick up the new configuration:
 
 And that's it!
 
+## Custom Bot Policies
+
+Anubis has one other configuration file aside from `/etc/anubis.env` called
+the [bot policy file][anubis-policies]. This is a YAML document that spells
+out what actions Anubis should take when evaluating requests. The [default
+configuration](https://github.com/TecharoHQ/anubis/blob/main/data/botPolicies.yaml)
+can be found in the Anubis source repository. This file is baked into
+the executable, but Anubis can be configured to use a custom bot policy
+file at runtime.
+
+To use a custom policy, start by copying the default policy from upstream.
+Unfortunately this file is updated fairly frequently (it's an arms race
+after all), so the default bot policy differs from version to version,
+and they're not necessarily compatible. When copying the default policy,
+make sure that it matches the version of Anubis you have installed:
+
+```
+# pkg_info anubis | head -1
+Information for inst:anubis-1.25.0v0
+```
+
+I'm running version 1.25.0. Once you know what version you're running,
+the default policy for that specific version can be copied from upstream:
+
+```
+# mkdir /etc/anubis
+# cd /etc/anubis
+# ftp https://raw.githubusercontent.com/TecharoHQ/anubis/refs/tags/v1.25.0/data/botPolicies.yaml
+```
+
+Anubis can then be configured to use this local `botPolicies.yaml`
+instead of the default one baked into the executable:
+
+```diff
+ # /etc/anubis.env
+
+ # ...
+
++export POLICY_FNAME=/etc/anubis/botPolicies.yaml
+```
+
 ## Some Additional Configuration
 
 ### Creating a Daemon User
@@ -200,6 +241,7 @@ in a chroot. This is left as an exercise to the reader.
 [Anubis]: https://anubis.techaro.lol/
 [anubis-xff]: https://anubis.techaro.lol/docs/admin/caveats-xff
 [anubis-setup]: https://anubis.techaro.lol/docs/admin/installation
+[anubis-policies]: https://anubis.techaro.lol/docs/admin/policies/
 
 [httpd(8)]: http://man.openbsd.org/httpd.8
 [httpd.conf(5)]: http://man.openbsd.org/httpd.conf.5
