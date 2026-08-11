@@ -512,23 +512,26 @@ buildBaseFooter = do
 
 -- Post HTML
 
--- | Build OpenGraph metadata for this post. See https://ogp.me/
-buildPostMeta :: PostMeta -> Builder ()
-buildPostMeta meta = do
-  prop "og:site_name" siteName
-  prop "og:type" "article"
-  prop "og:title" (postTitleText meta)
-  prop "og:description" `mapM_` postSummaryText meta
-  prop "og:url" . uriText =<< pagePermalink
-  prop "article:published_time" $ formatDay (postDate meta)
+-- | Build an OpenGraph @<meta>@ tag.
+ogProperty :: Text -> Text -> Builder ()
+ogProperty k v = meta_ [property_ k, content_ v]
   where
     -- https://github.com/chrisdone/lucid/pull/168
-    -- \| The @property@ attribute.
     property_ :: Text -> Attributes
     property_ = makeAttributes "property"
 
-    prop :: Text -> Text -> Builder ()
-    prop k v = meta_ [property_ k, content_ v]
+-- | Build OpenGraph metadata for this post. See https://ogp.me/
+buildPostOpenGraph :: PostMeta -> Builder ()
+buildPostOpenGraph meta = do
+  ogProperty "og:site_name" siteName
+  ogProperty "og:type" "article"
+  ogProperty "og:title" (postTitleText meta)
+  ogProperty "og:description" `mapM_` postSummaryText meta
+  ogProperty "description" `mapM_` postSummaryText meta
+  ogProperty "og:url" . uriText =<< pagePermalink
+  ogProperty "og:locale" "en_US"
+  ogProperty "article:published_time" $ formatDay (postDate meta)
+  ogProperty "article:modified_time" `mapM_` (formatDay <$> postUpdated meta)
 
 -- | Build the article @<header>@.
 buildPostHeader :: PostMeta -> Builder ()
@@ -549,7 +552,7 @@ buildPost unprocessedDoc = do
     head_ $ do
       buildTitle (postTitleText meta)
       buildBaseHead
-      buildPostMeta meta
+      buildPostOpenGraph meta
     body_ $ do
       buildBaseHeader
       main_ $ do
@@ -611,12 +614,24 @@ buildPostListEntry src meta = do
 
     date = formatTime defaultTimeLocale "%b %d %Y" (postDate meta)
 
+-- | Build OpenGraph metadata for the home page. See https://ogp.me/
+buildHomeOpenGraph :: Builder ()
+buildHomeOpenGraph = do
+  ogProperty "og:site_name" siteName
+  ogProperty "og:type" "website"
+  ogProperty "og:title" siteName
+  ogProperty "og:url" . uriText =<< pagePermalink
+  ogProperty "og:description" "Beep boop I have a website called jtm.cx"
+  ogProperty "description" "Beep boop I have a website called jtm.cx"
+  ogProperty "og:locale" "en_US"
+
 buildHome :: Builder ()
 buildHome = do
   doctypehtml_ $ do
     head_ $ do
       buildTitle "Home"
       buildBaseHead
+      buildHomeOpenGraph
       withRelative [absfile|/static/home.css|] $ \path ->
         link_ [rel_ "stylesheet", href_ path]
     body_ $ do
