@@ -131,7 +131,7 @@ hr {
 }
 
 article header .meta {
-  color: var(--accent);
+  color: var(--ink-soft);
   margin-bottom: 0.6rem;
 
   /* .fancy-mono */

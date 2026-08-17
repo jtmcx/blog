@@ -538,7 +538,9 @@ buildPostHeader :: PostMeta -> Builder ()
 buildPostHeader meta = do
   titleHtml <- action $ postTitleHtml meta
   header_ $ do
-    p_ [class_ "meta"] (toHtml $ "Published · " ++ date)
+    p_ [class_ "meta"] $ do
+      "Published on "
+      time_ [datetime_ (formatDay (postDate meta))] (toHtml date)
     h1_ [class_ "title"] (toHtmlRaw titleHtml)
   where
     date :: String
