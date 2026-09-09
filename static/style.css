@@ -182,6 +182,16 @@ blockquote {
 blockquote p:first-child { margin-top: 0; }
 blockquote p:last-child { margin-bottom: 0; }
 
+figure { margin: 1.6rem 0; }
+figure p:first-child { margin-top: 0; }
+figure p:last-child { margin-bottom: 0; }
+
+figcaption {
+  font-size: small;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
 code {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.88em;
