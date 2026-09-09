@@ -15,7 +15,6 @@ executable site
                     , filepath
                     , lucid2
                     , feed
-                    , here
                     , network-uri
                     , pandoc
                     , pandoc-types

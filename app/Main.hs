@@ -8,7 +8,6 @@ import Data.List (sortOn)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Monoid (Any (..))
 import Data.Ord (Down (Down))
-import Data.String.Here (here)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
@@ -540,19 +539,6 @@ buildBaseFooter = do
       a_ [href_ "https://creativecommons.org/licenses/by-sa/4.0/"] "CC-BY-SA"
       "."
 
-katexInitJs :: Text
-katexInitJs = [here|
-document.addEventListener("DOMContentLoaded", function () {
-  document.querySelectorAll(".math").forEach(function (el) {
-    katex.render(el.textContent, el, {
-      displayMode: el.classList.contains("display"),
-      throwOnError: false,
-      macros: { "\\arraystretch": "1.25" },
-    });
-  });
-});
-|]
-
 -- | Include KaTeX assets.
 buildKatex :: Builder ()
 buildKatex = do
@@ -560,7 +546,8 @@ buildKatex = do
     link_ [rel_ "stylesheet", href_ path]
   withRelative [absfile|/static/katex-0.16.44/katex.min.js|] $ \path ->
     script_ [defer_ "", src_ path] ("" :: Text)
-  script_ [] (toHtmlRaw katexInitJs)
+  withRelative [absfile|/static/script/katex-init.js|] $ \path ->
+    script_ [defer_ "", src_ path] ("" :: Text)
 
 -- Post HTML
 
