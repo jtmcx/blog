@@ -43,7 +43,7 @@
   --rule: #4a4237;
   --accent: #e2916a;
   --accent-soft: #3a2f22;
-  --code-bg: #32302f;
+  --code-bg: #282624;
   --code-fg: #e8e1d3;
 }
 
@@ -223,39 +223,33 @@ p.back-to-top {
   text-align: center;
 }
 
-/* Gruvbox dark */
-pre code .kw { color: #fb4934; }                                  /* keyword */
-pre code .cf { color: #fb4934; }                                  /* control flow */
-pre code .dt { color: #fabd2f; }                                  /* data type */
-pre code .dv { color: #d3869b; }                                  /* decimal value */
-pre code .bn { color: #d3869b; }                                  /* base-n value */
-pre code .fl { color: #d3869b; }                                  /* float */
-pre code .st { color: #b8bb26; }                                  /* string */
-pre code .vs { color: #b8bb26; }                                  /* verbatim string */
-pre code .ss { color: #b8bb26; }                                  /* special string */
-pre code .ch { color: #b8bb26; }                                  /* char */
-pre code .sc { color: #b8bb26; }                                  /* special char */
-pre code .co { color: #928374; font-style: italic; }              /* comment */
-pre code .cv { color: #928374; font-style: italic; }              /* comment var */
-pre code .do { color: #928374; font-style: italic; }              /* documentation */
-pre code .an { color: #928374; font-style: italic; }              /* annotation */
-pre code .in { color: #928374; font-style: italic; }              /* information */
-pre code .fu { color: #83a598; }                                  /* function */
-pre code .va { color: #ebdbb2; }                                  /* variable */
-pre code .op { color: #fe8019; }                                  /* operator */
-pre code .pp { color: #8ec07c; }                                  /* preprocessor */
-pre code .im { color: #8ec07c; }                                  /* import */
-pre code .at { color: #8ec07c; }                                  /* attribute */
-pre code .cn { color: #fe8019; }                                  /* constant */
-pre code .bu { color: #fe8019; }                                  /* builtin */
-pre code .ex { color: #fe8019; }                                  /* extension */
-pre code .er { color: #fb4934; font-weight: bold; }               /* error */
-pre code .wa { color: #fb4934; font-weight: bold; }               /* warning */
-pre code .al { color: #fb4934; font-weight: bold; }               /* alert */
+:root {
+  --syntax-keyword: #e2916a;
+  --syntax-symbol: #d3869b;
+  --syntax-literal: #83a598;
+  --syntax-comment: #928374;
+}
+
+pre code .kw { color: var(--syntax-keyword); }                     /* keyword */
+pre code .cf { color: var(--syntax-keyword); }                     /* control flow */
+pre code .op { color: var(--syntax-symbol); }                      /* operator (symbol) */
+pre code .dv { color: var(--syntax-literal); }                     /* decimal value */
+pre code .bn { color: var(--syntax-literal); }                     /* base-n value */
+pre code .fl { color: var(--syntax-literal); }                     /* float */
+pre code .st { color: var(--syntax-literal); }                     /* string */
+pre code .vs { color: var(--syntax-literal); }                     /* verbatim string */
+pre code .ss { color: var(--syntax-literal); }                     /* special string */
+pre code .ch { color: var(--syntax-literal); }                     /* char */
+pre code .sc { color: var(--syntax-literal); }                     /* special char */
+pre code .co { color: var(--syntax-comment); font-style: italic; } /* comment */
+pre code .cv { color: var(--syntax-comment); font-style: italic; } /* comment var */
+pre code .do { color: var(--syntax-comment); font-style: italic; } /* documentation */
+pre code .an { color: var(--syntax-comment); font-style: italic; } /* annotation */
+pre code .in { color: var(--syntax-comment); font-style: italic; } /* information */
 
 /* Fix diff syntax higlighting. */
-pre code.diff .st { color: #fb4934; }                             /* removed line */
-pre code.diff .va { color: #b8bb26; }                             /* added line */
+pre code.diff .st { color: var(--syntax-keyword); }               /* removed line */
+pre code.diff .va { color: var(--syntax-literal); }               /* added line */
 
 /* Shrink KaTeX to match the body text size. */
 .katex { font-size: 1em; }
