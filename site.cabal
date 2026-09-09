@@ -21,6 +21,7 @@ executable site
                     , path
                     , shake
                     , sitemap-gen
+                    , skylighting
                     , template-haskell
                     , text
                     , time

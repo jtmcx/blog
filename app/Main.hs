@@ -22,6 +22,7 @@ import Main.Path.Extra
 import Network.URI (URI (..), escapeURIString, isUnreserved, nullURI, parseURIReference, unEscapeString, uriIsRelative, uriToString)
 import qualified Network.URI as URI
 import Network.URI.Static (uri)
+import Skylighting (SyntaxMap, addSyntaxDefinition, defaultSyntaxMap, parseSyntaxDefinition, sName, sShortname)
 import Text.Atom.Feed (Entry (..), Feed (..), TextContent (..))
 import qualified Text.Atom.Feed as Atom
 import qualified Text.Atom.Feed.Export as Atom
@@ -314,14 +315,31 @@ readMarkdown path = do
             enableExtension Pandoc.Ext_yaml_metadata_block pandocExtensions
         }
 
+loadSyntaxMap :: Action SyntaxMap
+loadSyntaxMap = do
+  need ["pandoc/syntax/coq.xml"]
+  result <- liftIO $ parseSyntaxDefinition "pandoc/syntax/coq.xml"
+  case result of
+    Left err -> fail ("failed to parse coq.xml: " ++ err)
+    Right coq ->
+      let rocq = coq {sName = "Rocq", sShortname = "rocq"}
+       in pure
+            . addSyntaxDefinition rocq
+            . addSyntaxDefinition coq
+            $ defaultSyntaxMap
+
 -- | Convert a pandoc document to an html string.
 docToHtml :: Pandoc -> Action Text
-docToHtml doc = runPandoc $ Pandoc.writeHtml5String writerOptions doc
+docToHtml doc = do
+    options <- getWriterOptions
+    runPandoc $ Pandoc.writeHtml5String options doc
   where
-    writerOptions :: Pandoc.WriterOptions
-    writerOptions =
-      Pandoc.def
+    getWriterOptions :: Action Pandoc.WriterOptions
+    getWriterOptions = do
+      syntaxMap <- loadSyntaxMap
+      pure $ Pandoc.def
         { Pandoc.writerHighlightStyle = Just pygments
+        , Pandoc.writerSyntaxMap = syntaxMap
         }
 
 -- | Read and parse the front-matter of a post.

@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE language SYSTEM "language.dtd">
+<language name="Coq" version="1" kateversion="5.0" section="Scientific"
+           extensions="*.v" mimetype="text/x-coq">
+  <highlighting>
+    <list name="vernacular">
+      <item>Theorem</item>
+      <item>Lemma</item>
+      <item>Fact</item>
+      <item>Remark</item>
+      <item>Corollary</item>
+      <item>Proposition</item>
+      <item>Example</item>
+      <item>Definition</item>
+      <item>Fixpoint</item>
+      <item>CoFixpoint</item>
+      <item>Function</item>
+      <item>Inductive</item>
+      <item>CoInductive</item>
+      <item>Variant</item>
+      <item>Record</item>
+      <item>Structure</item>
+      <item>Class</item>
+      <item>Instance</item>
+      <item>Existing</item>
+      <item>Axiom</item>
+      <item>Axioms</item>
+      <item>Conjecture</item>
+      <item>Parameter</item>
+      <item>Parameters</item>
+      <item>Variable</item>
+      <item>Variables</item>
+      <item>Context</item>
+      <item>Hypothesis</item>
+      <item>Hypotheses</item>
+      <item>Section</item>
+      <item>End</item>
+      <item>Module</item>
+      <item>Type</item>
+      <item>Import</item>
+      <item>Export</item>
+      <item>Require</item>
+      <item>Include</item>
+      <item>Open</item>
+      <item>Close</item>
+      <item>Scope</item>
+      <item>Notation</item>
+      <item>Infix</item>
+      <item>Reserved</item>
+      <item>Arguments</item>
+      <item>Implicit</item>
+      <item>Set</item>
+      <item>Unset</item>
+      <item>Check</item>
+      <item>Print</item>
+      <item>About</item>
+      <item>Search</item>
+      <item>SearchAbout</item>
+      <item>Eval</item>
+      <item>Compute</item>
+      <item>Ltac</item>
+      <item>Ltac2</item>
+      <item>Tactic</item>
+      <item>Proof</item>
+      <item>Qed</item>
+      <item>Defined</item>
+      <item>Admitted</item>
+      <item>Abort</item>
+      <item>Save</item>
+      <item>Goal</item>
+      <item>Obligation</item>
+      <item>Obligations</item>
+      <item>Next</item>
+      <item>Program</item>
+      <item>Scheme</item>
+      <item>Combined</item>
+      <item>Hint</item>
+      <item>Coercion</item>
+      <item>Universe</item>
+      <item>Universes</item>
+      <item>Polymorphic</item>
+      <item>Monomorphic</item>
+      <item>Local</item>
+      <item>Global</item>
+      <item>Private</item>
+      <item>From</item>
+      <item>With</item>
+      <item>Add</item>
+      <item>Declare</item>
+      <item>Derive</item>
+      <item>Generalizable</item>
+      <item>All</item>
+      <item>No</item>
+      <item>Bind</item>
+      <item>Delimit</item>
+      <item>Canonical</item>
+    </list>
+    <list name="keywords">
+      <item>fun</item>
+      <item>let</item>
+      <item>in</item>
+      <item>if</item>
+      <item>then</item>
+      <item>else</item>
+      <item>match</item>
+      <item>with</item>
+      <item>end</item>
+      <item>as</item>
+      <item>forall</item>
+      <item>exists</item>
+      <item>exists2</item>
+      <item>fix</item>
+      <item>cofix</item>
+      <item>return</item>
+      <item>struct</item>
+      <item>where</item>
+      <item>for</item>
+      <item>of</item>
+      <item>Prop</item>
+      <item>SProp</item>
+    </list>
+    <list name="tactics">
+      <item>intro</item>
+      <item>intros</item>
+      <item>apply</item>
+      <item>exact</item>
+      <item>assumption</item>
+      <item>reflexivity</item>
+      <item>simpl</item>
+      <item>unfold</item>
+      <item>fold</item>
+      <item>rewrite</item>
+      <item>induction</item>
+      <item>destruct</item>
+      <item>case</item>
+      <item>inversion</item>
+      <item>inversion_clear</item>
+      <item>injection</item>
+      <item>discriminate</item>
+      <item>contradiction</item>
+      <item>tauto</item>
+      <item>firstorder</item>
+      <item>congruence</item>
+      <item>omega</item>
+      <item>lia</item>
+      <item>nia</item>
+      <item>lra</item>
+      <item>nra</item>
+      <item>ring</item>
+      <item>field</item>
+      <item>auto</item>
+      <item>eauto</item>
+      <item>trivial</item>
+      <item>split</item>
+      <item>splits</item>
+      <item>left</item>
+      <item>right</item>
+      <item>constructor</item>
+      <item>econstructor</item>
+      <item>elim</item>
+      <item>eelim</item>
+      <item>generalize</item>
+      <item>clear</item>
+      <item>clearbody</item>
+      <item>rename</item>
+      <item>revert</item>
+      <item>specialize</item>
+      <item>pose</item>
+      <item>remember</item>
+      <item>subst</item>
+      <item>symmetry</item>
+      <item>transitivity</item>
+      <item>etransitivity</item>
+      <item>f_equal</item>
+      <item>repeat</item>
+      <item>try</item>
+      <item>progress</item>
+      <item>first</item>
+      <item>solve</item>
+      <item>idtac</item>
+      <item>fail</item>
+      <item>now</item>
+      <item>easy</item>
+      <item>assert</item>
+      <item>enough</item>
+      <item>cut</item>
+      <item>exfalso</item>
+      <item>absurd</item>
+      <item>change</item>
+      <item>replace</item>
+      <item>pattern</item>
+      <item>red</item>
+      <item>cbv</item>
+      <item>cbn</item>
+      <item>lazy</item>
+      <item>hnf</item>
+      <item>vm_compute</item>
+      <item>native_compute</item>
+      <item>compute</item>
+      <item>intuition</item>
+      <item>decompose</item>
+      <item>dependent</item>
+      <item>functional</item>
+      <item>autorewrite</item>
+      <item>autounfold</item>
+      <item>unshelve</item>
+      <item>refine</item>
+      <item>shelve</item>
+      <item>admit</item>
+      <item>abstract</item>
+      <item>do</item>
+      <item>using</item>
+      <item>into</item>
+      <item>by</item>
+      <item>at</item>
+      <item>eqn</item>
+    </list>
+    <list name="types">
+      <item>list</item>
+      <item>option</item>
+      <item>unit</item>
+      <item>sig</item>
+      <item>sigT</item>
+      <item>sum</item>
+      <item>prod</item>
+      <item>True</item>
+      <item>False</item>
+      <item>eq</item>
+      <item>and</item>
+      <item>or</item>
+      <item>not</item>
+      <item>iff</item>
+      <item>Some</item>
+      <item>None</item>
+      <item>nil</item>
+      <item>cons</item>
+      <item>true</item>
+      <item>false</item>
+      <item>tt</item>
+      <item>I</item>
+      <item>pair</item>
+      <item>inl</item>
+      <item>inr</item>
+      <item>existT</item>
+      <item>exist</item>
+    </list>
+    <contexts>
+      <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+        <StringDetect String="(*" attribute="Comment" context="Comment" beginRegion="Comment"/>
+        <DetectChar char="&quot;" attribute="String" context="String"/>
+        <keyword String="vernacular" attribute="Vernacular" context="#stay"/>
+        <keyword String="keywords" attribute="Keyword" context="#stay"/>
+        <keyword String="tactics" attribute="Tactic" context="#stay"/>
+        <keyword String="types" attribute="DataType" context="#stay"/>
+        <Float attribute="Number" context="#stay"/>
+        <Int attribute="Number" context="#stay"/>
+        <StringDetect String="&lt;-&gt;" attribute="Operator" context="#stay"/>
+        <StringDetect String="-&gt;" attribute="Operator" context="#stay"/>
+        <StringDetect String="=&gt;" attribute="Operator" context="#stay"/>
+        <StringDetect String=":=" attribute="Operator" context="#stay"/>
+        <StringDetect String="/\" attribute="Operator" context="#stay"/>
+        <StringDetect String="\/" attribute="Operator" context="#stay"/>
+        <StringDetect String="|-" attribute="Operator" context="#stay"/>
+        <StringDetect String="::" attribute="Operator" context="#stay"/>
+        <StringDetect String="==" attribute="Operator" context="#stay"/>
+        <StringDetect String="&lt;&gt;" attribute="Operator" context="#stay"/>
+        <StringDetect String="&lt;=" attribute="Operator" context="#stay"/>
+        <StringDetect String="&gt;=" attribute="Operator" context="#stay"/>
+        <DetectChar char="~" attribute="Operator" context="#stay"/>
+        <RegExpr String="[A-Za-z_][A-Za-z0-9_']*" attribute="Normal Text" context="#stay"/>
+        <AnyChar String="+-*/=&lt;&gt;@%^|:;,.()[]{}!?&amp;" attribute="Symbol" context="#stay"/>
+      </context>
+      <context name="Comment" attribute="Comment" lineEndContext="#stay">
+        <StringDetect String="(*" attribute="Comment" context="Comment" beginRegion="Comment"/>
+        <StringDetect String="*)" attribute="Comment" context="#pop" endRegion="Comment"/>
+      </context>
+      <context name="String" attribute="String" lineEndContext="#stay">
+        <Detect2Chars char="&quot;" char1="&quot;" attribute="String" context="#stay"/>
+        <DetectChar char="&quot;" attribute="String" context="#pop"/>
+      </context>
+    </contexts>
+    <itemDatas>
+      <itemData name="Normal Text" defStyleNum="dsNormal"/>
+      <itemData name="Vernacular" defStyleNum="dsKeyword"/>
+      <itemData name="Keyword" defStyleNum="dsControlFlow"/>
+      <itemData name="Tactic" defStyleNum="dsFunction"/>
+      <itemData name="DataType" defStyleNum="dsDataType"/>
+      <itemData name="Comment" defStyleNum="dsComment"/>
+      <itemData name="String" defStyleNum="dsString"/>
+      <itemData name="Number" defStyleNum="dsDecVal"/>
+      <itemData name="Operator" defStyleNum="dsOperator"/>
+      <itemData name="Symbol" defStyleNum="dsOperator"/>
+    </itemDatas>
+  </highlighting>
+  <general>
+    <comments>
+      <comment name="multiLine" start="(*" end="*)" region="Comment"/>
+    </comments>
+    <keywords casesensitive="1"/>
+  </general>
+</language>
