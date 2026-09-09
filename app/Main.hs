@@ -1,12 +1,14 @@
 module Main (main) where
 
-import Control.Monad (guard)
+import Control.Monad (guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State (StateT (..), gets, modify)
 import Data.Functor (($>))
 import Data.List (sortOn)
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Monoid (Any (..))
 import Data.Ord (Down (Down))
+import Data.String.Here (here)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
@@ -32,7 +34,7 @@ import Text.Pandoc.Class (PandocPure, runPure)
 import Text.Pandoc.Definition (Block (..), Inline (..), Pandoc (..))
 import Text.Pandoc.Highlighting (pygments)
 import Text.Pandoc.Shared (stringify)
-import Text.Pandoc.Walk (walkM)
+import Text.Pandoc.Walk (query, walkM)
 import Web.Sitemap.Gen (Sitemap (..), SitemapUrl (..), renderSitemap)
 
 -- Configuration
@@ -340,7 +342,17 @@ docToHtml doc = do
       pure $ Pandoc.def
         { Pandoc.writerHighlightStyle = Just pygments
         , Pandoc.writerSyntaxMap = syntaxMap
+        , Pandoc.writerHTMLMathMethod = Pandoc.KaTeX ""
         }
+
+-- | Does a document contain any math?
+hasMath :: Pandoc -> Bool
+hasMath = getAny . query isMath
+  where
+    isMath :: Inline -> Any
+    isMath (Math {}) = Any True
+    isMath _ = Any False
+
 
 -- | Read and parse the front-matter of a post.
 readPostMeta :: Path a File -> Action PostMeta
@@ -528,6 +540,28 @@ buildBaseFooter = do
       a_ [href_ "https://creativecommons.org/licenses/by-sa/4.0/"] "CC-BY-SA"
       "."
 
+katexInitJs :: Text
+katexInitJs = [here|
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".math").forEach(function (el) {
+    katex.render(el.textContent, el, {
+      displayMode: el.classList.contains("display"),
+      throwOnError: false,
+      macros: { "\\arraystretch": "1.25" },
+    });
+  });
+});
+|]
+
+-- | Include KaTeX assets.
+buildKatex :: Builder ()
+buildKatex = do
+  withRelative [absfile|/static/katex-0.16.44/katex.min.css|] $ \path ->
+    link_ [rel_ "stylesheet", href_ path]
+  withRelative [absfile|/static/katex-0.16.44/katex.min.js|] $ \path ->
+    script_ [defer_ "", src_ path] ("" :: Text)
+  script_ [] (toHtmlRaw katexInitJs)
+
 -- Post HTML
 
 -- | Build an OpenGraph @<meta>@ tag.
@@ -571,6 +605,7 @@ buildPost unprocessedDoc = do
   doctypehtml_ $ do
     head_ $ do
       buildTitle (postTitleText meta)
+      when (hasMath doc) buildKatex
       buildBaseHead
       buildPostOpenGraph meta
     body_ $ do

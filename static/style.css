@@ -246,3 +246,6 @@ pre code .al { color: #fb4934; font-weight: bold; }               /* alert */
 /* Fix diff syntax higlighting. */
 pre code.diff .st { color: #fb4934; }                             /* removed line */
 pre code.diff .va { color: #b8bb26; }                             /* added line */
+
+/* Shrink KaTeX to match the body text size. */
+.katex { font-size: 1em; }
