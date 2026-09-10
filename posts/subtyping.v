@@ -343,7 +343,7 @@ the "left" side of the context, which is the tail.
 
 We can apply an entire context to a given term. Doing so substitutes
 all solved existential variables with their respective solution.
-Defined in figure 17.
+Defined in figure 10.
 |*)
 
 Fixpoint apply G {p} (A : ty p) : ty p :=
@@ -382,10 +382,10 @@ context. The proof `wf G k p A` states that all free variables in
 (`p` is just the polarity of `A`).  The term `wf [] 0 _ A` is proof
 that `A` is closed and ground.
 
-This definition was adapted from figure 2. The `Twfuvar` rule is
+This definition was adapted from figure 3. The `Twfuvar` rule is
 split into `Twfbvar` and `Twffvar` in order to handle locally-nameless
 variables. The `Twfguess` rule is added as well to handle existential
-variables. It's defined later in the paper in figure 13.
+variables. It's defined later in the paper in figure 15.
 |*)
 
 Inductive wf G : nat -> forall p, ty p -> Prop :=
