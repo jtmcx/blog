@@ -332,17 +332,18 @@ loadSyntaxMap = do
 -- | Convert a pandoc document to an html string.
 docToHtml :: Pandoc -> Action Text
 docToHtml doc = do
-    options <- getWriterOptions
-    runPandoc $ Pandoc.writeHtml5String options doc
+  options <- getWriterOptions
+  runPandoc $ Pandoc.writeHtml5String options doc
   where
     getWriterOptions :: Action Pandoc.WriterOptions
     getWriterOptions = do
       syntaxMap <- loadSyntaxMap
-      pure $ Pandoc.def
-        { Pandoc.writerHighlightStyle = Just pygments
-        , Pandoc.writerSyntaxMap = syntaxMap
-        , Pandoc.writerHTMLMathMethod = Pandoc.KaTeX ""
-        }
+      pure $
+        Pandoc.def
+          { Pandoc.writerHighlightStyle = Just pygments,
+            Pandoc.writerSyntaxMap = syntaxMap,
+            Pandoc.writerHTMLMathMethod = Pandoc.KaTeX ""
+          }
 
 -- | Does a document contain any math?
 hasMath :: Pandoc -> Bool
@@ -351,7 +352,6 @@ hasMath = getAny . query isMath
     isMath :: Inline -> Any
     isMath (Math {}) = Any True
     isMath _ = Any False
-
 
 -- | Read and parse the front-matter of a post.
 readPostMeta :: Path a File -> Action PostMeta
