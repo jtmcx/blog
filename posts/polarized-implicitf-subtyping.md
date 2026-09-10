@@ -45,12 +45,14 @@ Create HintDb subtyping.
 The syntax we're dealing with is this one:
 
 <figure>
+
 $$
 \begin{array}{rrcl}
 \text{Positive types} & P & ::= & \alpha \mid \hat{\alpha} \mid {\downarrow}N \\
 \text{Negative types} & N & ::= & P \to N \mid \forall \alpha.\, N \mid {\uparrow}P \\
 \end{array}
 $$
+
 <figcaption>
 Types in Implicit Polarized F, taken from the paper.
 </figcaption>
