@@ -8,3 +8,11 @@ _site/
 html.tgz
 .*.sw[a-z]
 drafts
+*.bak
+
+# Rocq
+.*.aux
+*.glob
+*.vo
+*.vok
+*.vos
