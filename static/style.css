@@ -72,7 +72,6 @@ body {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.8rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 header.main {
@@ -92,12 +91,10 @@ header.main nav ul {
   gap: 1.8rem;
   padding: 0;
   margin: 0;
-
   /* .fancy-mono */
   font-family: "JetBrains Mono", monospace;
   font-size: 0.8rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 /* undecorate nav links */
@@ -133,12 +130,10 @@ hr {
 article header .meta {
   color: var(--ink-soft);
   margin-bottom: 0.6rem;
-
   /* .fancy-mono */
   font-family: "JetBrains Mono", monospace;
   font-size: 0.8rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 h1.title {

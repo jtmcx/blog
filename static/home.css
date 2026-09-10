@@ -39,12 +39,10 @@ ul.post-list li.post-entry {
 .post-date {
   flex: 0 0 auto;
   color: var(--ink-soft);
-
   /* .fancy-mono */
   font-family: "JetBrains Mono", monospace;
   font-size: 0.75rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 @media (max-width: 480px) {
