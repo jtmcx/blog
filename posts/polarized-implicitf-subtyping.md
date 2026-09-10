@@ -29,7 +29,8 @@ but this particular flavor of black magic is a good one.
 [cbpv-wiki]: https://en.wikipedia.org/wiki/Call-by-push-value
 
 This is a literate Rocq file that explores the subtyping algorithm
-presented in the paper. The source can be downloaded [here](./subtyping.v).
+presented in the paper. The source can be downloaded [here](./subtyping.v),
+or viewed on GitHub [here](https://github.com/jtmcx/blog/blob/main/posts/subtyping.v).
 
 ```coq
 From Stdlib Require Import String.
