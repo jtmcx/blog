@@ -521,6 +521,7 @@ buildBaseHeader = do
         li_ $ withRelative [absfile|/feed.atom|] $ \path ->
           a_ [href_ path] "Feed"
         li_ $ a_ [href_ "https://github.com/jtmcx"] "GitHub"
+        li_ $ a_ [href_ "https://linkedin.com/in/john-murphy-781971292"] $ b_ "Hire Me!"
     span_ [class_ "mark"] (toHtml siteName)
 
 -- | Build the base @<footer>@.
@@ -533,11 +534,15 @@ buildBaseFooter = do
       a_ [href_ "https://github.com/jtmcx/blog"] "source"
       " licensed under "
       a_ [href_ "https://github.com/jtmcx/blog/tree/master/LICENSE"] "ISC"
-      "."
-    span_ $ do
+      ". "
       "Content licensed under "
       a_ [href_ "https://creativecommons.org/licenses/by-sa/4.0/"] "CC-BY-SA"
       "."
+    span_ $ "All posts are written by a human."
+    span_ $ do
+      "Want to be a better programmer? "
+      a_ [href_ "https://www.recurse.com/scout/click?t=3205c435e5eccc283beefc3e040651f0"] $
+        "Join the Recurse Center!"
 
 -- | Include KaTeX assets.
 buildKatex :: Builder ()
