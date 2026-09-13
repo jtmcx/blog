@@ -538,7 +538,11 @@ buildBaseFooter = do
       "Content licensed under "
       a_ [href_ "https://creativecommons.org/licenses/by-sa/4.0/"] "CC-BY-SA"
       "."
-    span_ $ "All posts are written by a human."
+    span_ $ do
+      "All posts are written by a human. "
+      "Drawings made with "
+      a_ [href_ "https://internet-janitor.itch.io/wigglypaint"] "wigglypaint"
+      "."
     span_ $ do
       "Want to be a better programmer? "
       a_ [href_ "https://www.recurse.com/scout/click?t=3205c435e5eccc283beefc3e040651f0"] $
