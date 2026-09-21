@@ -358,11 +358,20 @@ readPostMeta :: Path a File -> Action PostMeta
 readPostMeta path = readMarkdown path >>= parsePostMeta
 
 -- | Read and parse the front-matter for all posts.
-readAllPostMetas :: Action [(Path Rel File, PostMeta)]
-readAllPostMetas = do
+getAllPostMetas :: Action [(Path Rel File, PostMeta)]
+getAllPostMetas = do
   posts <- getDirectoryFilesP "" ["posts/*.md"]
   need $ map toFilePath posts
   zip posts <$> mapM readPostMeta posts
+
+-- | A list of the n most recent posts.
+getMostRecentPostMetas :: Maybe Int -> Action [(Path Rel File, PostMeta)]
+getMostRecentPostMetas limit = do
+  posts <- getAllPostMetas
+  let sorted = sortOn (Down . postDate . snd) posts
+  case limit of
+    Just n -> pure $ take n sorted
+    Nothing -> pure sorted
 
 -- | Read a page's tracked internal links from a file.
 readLinks :: FilePath -> Action [URI]
@@ -518,10 +527,12 @@ buildBaseHeader = do
       ul_ $ do
         li_ $ withRelative [absfile|/index.html|] $ \path ->
           a_ [href_ path] "Home"
-        li_ $ withRelative [absfile|/feed.atom|] $ \path ->
-          a_ [href_ path] "Feed"
+        li_ $ withRelative [absfile|/posts.html|] $ \path ->
+          a_ [href_ path] "Posts"
         li_ $ a_ [href_ "https://github.com/jtmcx"] "GitHub"
         li_ $ a_ [href_ "https://linkedin.com/in/john-murphy-781971292"] $ b_ "Hire Me!"
+        li_ $ withRelative [absfile|/feed.atom|] $ \path ->
+          a_ [href_ path] "Feed"
     span_ [class_ "mark"] (toHtml siteName)
 
 -- | Build the base @<footer>@.
@@ -630,18 +641,15 @@ buildHomeBio = do
   div_ [class_ "bio"] $ toHtmlRaw bio
 
 -- | Construct the list of blog entries on the home page.
-buildPostList :: Builder ()
-buildPostList = do
-  posts <- action readAllPostMetas
-  section_ $ do
-    h2_ "Recent Posts"
-    case posts of
-      [] ->
-        p_ [class_ "empty-post-list"] "(Nothing here yet!)"
-      _ -> do
-        ul_ [class_ "post-list"] $ do
-          let sorted = sortOn (Down . postDate . snd) posts
-          mconcat $ map (uncurry buildPostListEntry) sorted
+buildPostList :: Maybe Int -> Builder ()
+buildPostList limit = do
+  posts <- action $ getMostRecentPostMetas limit
+  case posts of
+    [] ->
+      p_ [class_ "empty-post-list"] "(Nothing here yet!)"
+    _ -> do
+      ul_ [class_ "post-list"] $ do
+        mconcat $ map (uncurry buildPostListEntry) posts
 
 -- | Construct the list of blog entries on the home page.
 buildProjectList :: Builder ()
@@ -689,8 +697,24 @@ buildHome = do
         div_ [class_ "about"] $ do
           buildAvatar
           buildHomeBio
-        buildPostList
+        section_ $ do
+          h2_ "Recent Posts"
+          buildPostList (Just 3)
         buildProjectList
+      buildBaseFooter
+
+buildPostsPage :: Builder ()
+buildPostsPage = do
+  doctypehtml_ $ do
+    head_ $ do
+      buildTitle "Posts"
+      buildBaseHead
+    body_ $ do
+      buildBaseHeader
+      main_ $
+        section_ $ do
+          h2_ "All Posts"
+          buildPostList Nothing
       buildBaseFooter
 
 -- Shake rules
@@ -762,6 +786,18 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
         putInfo $ "Generated " ++ linksOut
       _ -> undefined
 
+  [ htmlDir </?> "posts.html",
+    linksDir </?> "posts.html.links"
+    ]
+    &%> \case
+      [htmlOut, linksOut] -> do
+        out <- parseRelFile htmlOut
+        st <- runBuilder out buildPostsPage
+        putInfo $ "Generated " ++ htmlOut
+        writeLinks linksOut (trackedLinks st)
+        putInfo $ "Generated " ++ linksOut
+      _ -> undefined
+
   [ htmlDir </?> "posts/*.html",
     linksDir </?> "posts/*.html.links"
     ]
@@ -777,7 +813,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
       _ -> undefined
 
   htmlDir </?> "feed.atom" %> \out -> do
-    posts <- readAllPostMetas
+    posts <- getAllPostMetas
     feed <- atomFeed posts
     case Atom.textFeed feed of
       Just xml -> do
@@ -786,7 +822,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
       Nothing -> fail "Failed to generate Atom feed"
 
   htmlDir </?> "sitemap.xml" %> \out -> do
-    posts <- readAllPostMetas
+    posts <- getAllPostMetas
     let xml = decodeUtf8 (renderSitemap (sitemap posts))
     writeFile' out (TL.unpack xml)
     putInfo $ "Generated " ++ out
