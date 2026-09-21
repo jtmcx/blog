@@ -683,8 +683,6 @@ buildHome = do
       buildTitle "Home"
       buildBaseHead
       buildHomeOpenGraph
-      withRelative [absfile|/static/home.css|] $ \path ->
-        link_ [rel_ "stylesheet", href_ path]
     body_ $ do
       buildBaseHeader
       main_ $ do
