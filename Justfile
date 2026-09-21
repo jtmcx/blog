@@ -44,6 +44,7 @@ tar:
 
 # Deploy the static site
 push: tar
+    @read -p "Sure you want to push? Press enter to continue. "
     scp html.tgz jtm.cx:
     ssh jtm.cx "./deploy-site html.tgz"
 
