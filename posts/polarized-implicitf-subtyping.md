@@ -6,6 +6,7 @@ summary: |
   some of that time diving into one of my favorite papers: [Implicit
   Polarized F: local type inference for impredicativity][mercer22]
   by Mercer et al. This is a partial mechanization in Rocq.
+includesMinorUpdates: true
 ---
 
 I had some spare time this past weekend, and I thought I'd spend
@@ -16,12 +17,11 @@ by Mercer et al.
 [mercer22]: https://arxiv.org/abs/2203.01835
 
 I love this paper because it tackles a hard problem in a very clever
-way. Type inference for System F has been known to be undecidable
-for a long time, and there is a lot of research out there exploring
-ways to make it tractable, often by using black magic.
-
-This particular paper solves the problem by leveraging the bipolar nature
-of [call-by-push-value][cbpv-wiki].  With some clever tricks, the paper
+way. Type inference for System F has been known to be undecidable for
+a long time, and there is a lot of research out there exploring ways
+to make it tractable, often by using black magic. This particular
+paper solves the problem by leveraging the bipolar nature of
+[call-by-push-value][cbpv-wiki].  With some clever tricks, the paper
 is able to provide an inference algorithm that is not only decidable,
 but it _doesn't require unification_!  There are limitations of course,
 but this particular flavor of black magic is a good one.

@@ -123,8 +123,10 @@ data PostMeta = PostMeta
     postSummary :: Maybe [Block],
     -- | The day the article was published.
     postDate :: Day,
-    -- | The date of the most recent update.
-    postUpdated :: Maybe Day
+    -- | The date of the most recent major update.
+    postUpdated :: Maybe Day,
+    -- | True if there were minor updates.
+    postIncludesMinorUpdates :: Bool
   }
 
 -- | The day of the most recent update.
@@ -169,13 +171,19 @@ metaToInlines = \case
   MetaString s -> pure [Pandoc.Str s]
   _ -> fail $ "meta value is not inline text"
 
--- | Parse a meta value as inline text.
+-- | Parse a meta value as a list of blocks.
 metaToBlocks :: (MonadFail m) => MetaValue -> m [Block]
 metaToBlocks = \case
   MetaInlines x -> pure [Para x]
   MetaString s -> pure [Para [Pandoc.Str s]]
   MetaBlocks x -> pure x
   _ -> fail $ "meta value is not block text"
+
+-- | Parse a meta value as a bool.
+metaToBool :: (MonadFail m) => MetaValue -> m Bool
+metaToBool = \case
+  MetaBool x -> pure x
+  _ -> fail $ "meta value is not a boolean"
 
 parseMetaTitle :: (MonadFail m) => Meta -> m [Inline]
 parseMetaTitle meta = do
@@ -201,6 +209,12 @@ parseMetaUpdated meta = do
     Just val -> parseDay <$> metaToText val
     Nothing -> pure Nothing
 
+parseMetaIncludesMinorUpdates :: (MonadFail m) => Meta -> m Bool
+parseMetaIncludesMinorUpdates meta = do
+  case Pandoc.lookupMeta "includesMinorUpdates" meta of
+    Just val -> metaToBool val
+    Nothing -> pure False
+
 -- | Parse a post's front-matter.
 parsePostMeta :: (MonadFail m) => Pandoc -> m PostMeta
 parsePostMeta (Pandoc meta _) = do
@@ -208,12 +222,14 @@ parsePostMeta (Pandoc meta _) = do
   summary <- parseMetaSummary meta
   date <- parseMetaDate meta
   updated <- parseMetaUpdated meta
+  includesMinorUpdates <- parseMetaIncludesMinorUpdates meta
   pure $
     PostMeta
       { postTitle = title,
         postSummary = summary,
         postDate = date,
-        postUpdated = updated
+        postUpdated = updated,
+        postIncludesMinorUpdates = includesMinorUpdates
       }
 
 -- Atom Feed
@@ -596,21 +612,27 @@ buildPostOpenGraph meta = do
   ogProperty "article:modified_time" `mapM_` (formatDay <$> postUpdated meta)
 
 -- | Build the article @<header>@.
-buildPostHeader :: PostMeta -> Builder ()
-buildPostHeader meta = do
+buildPostHeader :: Path Rel File -> PostMeta -> Builder ()
+buildPostHeader src meta = do
   titleHtml <- action $ postTitleHtml meta
   header_ $ do
-    p_ [class_ "meta"] $ do
-      "Published on "
-      time_ [datetime_ (formatDay (postDate meta))] (toHtml date)
+    section_ [class_ "meta"] $ do
+      p_ $ do
+        "Published on "
+        time_ [datetime_ (formatDay (postDate meta))] (toHtml date)
+        when (postIncludesMinorUpdates meta) $ do
+          ". Includes minor updates ("
+          let historyUri = "https://github.com/jtmcx/blog/commits/main/" <> escapePath src
+          a_ [href_ $ T.pack historyUri] "history"
+          ")."
     h1_ [class_ "title"] (toHtmlRaw titleHtml)
   where
     date :: String
     date = formatTime defaultTimeLocale "%b %d %Y" (postDate meta)
 
-buildPost :: Pandoc -> Builder ()
-buildPost unprocessedDoc = do
-  doc <- processDocumentLinks unprocessedDoc
+buildPost :: Path Rel File -> Builder ()
+buildPost src = do
+  doc <- action (readMarkdown src) >>= processDocumentLinks
   meta <- action $ parsePostMeta doc
   doctypehtml_ $ do
     head_ $ do
@@ -622,7 +644,7 @@ buildPost unprocessedDoc = do
       buildBaseHeader
       main_ $ do
         article_ $ do
-          buildPostHeader meta
+          buildPostHeader src meta
           (toHtmlRaw =<< action (docToHtml doc))
       p_ [class_ "back-to-top"] $
         a_ [href_ "#"] "↑ Back to top ↑"
@@ -806,8 +828,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
       [htmlOut, linksOut] -> do
         out <- parseRelFile htmlOut
         src <- out -<.> ".md" >>= stripProperPrefix htmlDir
-        doc <- readMarkdown src
-        st <- runBuilder out $ buildPost doc
+        st <- runBuilder out $ buildPost src
         putInfo $ "Generated " ++ htmlOut
         writeLinks linksOut (trackedLinks st)
         putInfo $ "Generated " ++ linksOut
