@@ -579,16 +579,19 @@ ogProperty k v = meta_ [property_ k, content_ v]
     property_ :: Text -> Attributes
     property_ = makeAttributes "property"
 
--- | Build OpenGraph metadata for this post. See https://ogp.me/
+buildOpenGraphBase :: Builder ()
+buildOpenGraphBase = do
+  ogProperty "og:site_name" siteName
+  ogProperty "og:url" . uriText =<< pagePermalink
+  ogProperty "og:locale" "en_US"
+
 buildPostOpenGraph :: PostMeta -> Builder ()
 buildPostOpenGraph meta = do
-  ogProperty "og:site_name" siteName
+  buildOpenGraphBase
   ogProperty "og:type" "article"
   ogProperty "og:title" (postTitleText meta)
   ogProperty "og:description" `mapM_` postSummaryText meta
   ogProperty "description" `mapM_` postSummaryText meta
-  ogProperty "og:url" . uriText =<< pagePermalink
-  ogProperty "og:locale" "en_US"
   ogProperty "article:published_time" $ formatDay (postDate meta)
   ogProperty "article:modified_time" `mapM_` (formatDay <$> postUpdated meta)
 
@@ -673,24 +676,17 @@ buildPostListEntry src meta = do
 
     date = formatTime defaultTimeLocale "%b %d %Y" (postDate meta)
 
--- | Build OpenGraph metadata for the home page. See https://ogp.me/
-buildHomeOpenGraph :: Builder ()
-buildHomeOpenGraph = do
-  ogProperty "og:site_name" siteName
-  ogProperty "og:type" "website"
-  ogProperty "og:title" siteName
-  ogProperty "og:url" . uriText =<< pagePermalink
-  ogProperty "og:description" "Beep boop I have a website called jtm.cx"
-  ogProperty "description" "Beep boop I have a website called jtm.cx"
-  ogProperty "og:locale" "en_US"
-
-buildHome :: Builder ()
-buildHome = do
+buildHomePage :: Builder ()
+buildHomePage = do
   doctypehtml_ $ do
     head_ $ do
       buildTitle "Home"
+      buildOpenGraphBase
+      ogProperty "og:type" "website"
+      ogProperty "og:title" siteName
+      ogProperty "og:description" "Beep boop I have a website called jtm.cx"
+      ogProperty "description" "Beep boop I have a website called jtm.cx"
       buildBaseHead
-      buildHomeOpenGraph
     body_ $ do
       buildBaseHeader
       main_ $ do
@@ -707,7 +703,12 @@ buildPostsPage :: Builder ()
 buildPostsPage = do
   doctypehtml_ $ do
     head_ $ do
-      buildTitle "Posts"
+      buildTitle "All Posts"
+      buildOpenGraphBase
+      ogProperty "og:type" "website"
+      ogProperty "og:title" "All Posts"
+      ogProperty "og:description" "Beep boop I have a website called jtm.cx"
+      ogProperty "description" "Beep boop I have a website called jtm.cx"
       buildBaseHead
     body_ $ do
       buildBaseHeader
@@ -780,7 +781,7 @@ main = shakeArgs shakeOptions {shakeFiles = toFilePath shakeDir} $ do
     &%> \case
       [htmlOut, linksOut] -> do
         out <- parseRelFile htmlOut
-        st <- runBuilder out buildHome
+        st <- runBuilder out buildHomePage
         putInfo $ "Generated " ++ htmlOut
         writeLinks linksOut (trackedLinks st)
         putInfo $ "Generated " ++ linksOut
